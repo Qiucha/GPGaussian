@@ -15,7 +15,7 @@ A written spec that names the allowed change to the PartSAM seam so a later sess
   - The object of the fix is the **Material Tag Tensor**, not a PhysGaussian MPM Solver rewrite. CUDA 700 at frame 95 is a symptom of a plant that lifted with **zero** trunk tags.
   - Merge: highest chosen-mask IoU (smaller mask on ties), plus prompted-ID **survival after lift** (full raw-mask restore, increasing IoU if several empty). Not named part order.
   - Success bar for a later execution map: *N* match; every prompted Stage 2 ID non-empty after lift; `frame_num` 5 finite / no CUDA 700; not 125-frame wind. No per-part count floors.
-  - Live clicks sat on the new 100k sample (nn distances millimetres). That does not by itself put Stage 2 out of the spec.
+  - Stage 2: skip-if-exists only when clicks belong to **this** 100k sample. No new negatives rule in this spec.
 
 ## Decisions so far
 
@@ -24,10 +24,10 @@ A written spec that names the allowed change to the PartSAM seam so a later sess
 - [Spec vs trial vs src merge](issues/03-spec-vs-trial-vs-src-merge.md) — Spec and `src/` use highest chosen-mask IoU, then smaller mask on ties; the trial used named order trunk > leaves > pot. `src/` persists `chosen_iou.json`. Findings: [research/03-spec-vs-trial-vs-src-merge.md](research/03-spec-vs-trial-vs-src-merge.md).
 - [Later execution success bar](issues/07-later-execution-success-bar.md) — Generic: *N* matches; every prompted Stage 2 ID is non-empty on the lifted Material Tag Tensor; 5-frame solver exit 0, finite, no CUDA 700; 125-frame wind stays out. No trunk > 1 000.
 - [Which merge rule now](issues/04-which-merge-rule-now.md) — IoU merge stays; if a prompted ID is empty after lift, restore that group’s full raw mask (several empties: increasing IoU). Not named trunk > leaves > pot.
+- [Is Stage 2 in the fix](issues/05-is-stage-2-in-the-fix.md) — In: sample-bound skip (no reuse of another 100k’s xyz). No new negatives rule.
 
 ## Not yet specified
 
-- Whether Stage 2 negatives or a fresh accept/swap round belong in the spec (merge is IoU plus survival; raw trunk mask was also ~47× smaller than trial).
 - A later implementation map (`src/segmentation/partsam/merge.py`, `run_pipeline.sh` re-run).
 - Orientation one-liner once the spec exists.
 
