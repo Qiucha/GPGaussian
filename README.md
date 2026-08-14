@@ -1,5 +1,7 @@
 # Phys4DGS
 
+GitHub: [Qiucha/GPGaussian](https://github.com/Qiucha/GPGaussian) (BlendED NVIDIA project, 2026).
+
 Multi-material physical simulation on 3D Gaussian Splatting scenes: a Segmenter Agent and heuristic primitives assign a material tag tensor, then the [PhysGaussian](https://github.com/XPandora/PhysGaussian) MPM solver steps the motion. This repository is the **delta** (segmentation, LLM config, Lamé overlay, digest dashboard). It does **not** vendor PhysGaussian, 3DGS, or FlashSplat.
 
 Cite PhysGaussian (Xie et al., arXiv:2311.12198). Nested 3DGS / FlashSplat trees use the [Inria/MPII Gaussian-Splatting license](https://raw.githubusercontent.com/graphdeco-inria/gaussian-splatting/main/LICENSE.md) (research / non-commercial).
