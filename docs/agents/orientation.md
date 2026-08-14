@@ -24,12 +24,11 @@ The “4D” in the name is **time-varying 3DGS particles under physics**. There
 
 **Stale entry points (use the `.sh` runners instead):** `scripts/run_pipeline.py`, `scripts/run_experiment.sh`, `tests/test_pipeline.py`, `tests/test_projection.py`.
 
-Full tables and paths: [repo current state](../../.scratch/agent-orientation/research/01-repo-current-state.md).
+Working vs stubbed tables: [repo current state](../../.scratch/agent-orientation/research/01-repo-current-state.md).
 
-## Vendor and experiments
+## Upstream clones and experiments
 
-- **`vendor/gaussian-splatting`** is load-bearing (checkpoint + rasterizer via `src/__init__.py`).
-- **`vendor/FlashSplat`** remains in-tree (`src/segmentation/flashsplat.py`); the intended tagging path is PartSAM. MPM frames use 3DGS rasterization.
+Clones resolve through `src/upstream.py` (`third_party/` or `PHYSGAUSSIAN_ROOT` / `PARTSAM_ROOT`). Simulation 3DGS is PhysGaussian’s nested `gaussian-splatting`. FlashSplat leftover source (`src/segmentation/flashsplat.py`) is unused by `./scripts/run_pipeline.sh`.
 
 `data/experiments/` holds ficus wind/sway **notes** (trunk still does not fully rebound in exp 4). No archived `output.mp4` in the tree. `digest/data/` JSON for six scenes is mock-agent export, not Warp video. Configs live under `configs/`.
 
@@ -65,9 +64,10 @@ Parallel RFC (not superseded): [Few-Shot LLM Motion Library & Granular Material 
 
 | Reach | For |
 | --- | --- |
+| [README.md](../../README.md) | GitHub visitor clone/install (`third_party/`, `physgauss` + `PartSAM`, `run_pipeline.sh`; FlashSplat optional) |
 | [CONTEXT.md](../../CONTEXT.md) | Glossary only (Heuristic Primitive, Segmenter Agent, Material Tag Tensor, PhysGaussian MPM Solver, Digest Dashboard, Dual-Mode Frame Player) |
 | [docs/agents/domain.md](domain.md) | How to consume the glossary and ADRs |
-| [repo current state](../../.scratch/agent-orientation/research/01-repo-current-state.md) | Working vs stubbed, vendor, run commands |
+| [repo current state](../../.scratch/agent-orientation/research/01-repo-current-state.md) | Working vs stubbed |
 | [PartSAM as Material Tag Tensor source](../../.scratch/partsam-as-tagger/spec.md) | PartSAM tagging policy (reach on Material Tag Tensor / PartSAM / intended producer) |
 | [Motion Critique Loop spec](../../.scratch/mpm-critique-loop/spec.md) | Post-run human-text retune of `--config` (reach on Motion Critique Loop / `critique` / `critique_loop`) |
 | [LLM-motion map](../../.scratch/llm-motion-physgaussian/map.md) | Parallel motion-to-config RFC |
