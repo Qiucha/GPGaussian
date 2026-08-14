@@ -1,0 +1,41 @@
+# Local datasets, leftover clones, third-party checkouts
+data/
+.trash/
+vendor/
+third_party/
+
+# Publish-surface (local-only)
+.claude/
+/issues/
+Paper_Writing/
+Dev Plan.md
+digest/data/
+digest.pdf
+walkthrough.pdf
+
+# Bytecode and packaging
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+dist/
+build/
+*.so
+
+# Weights, point clouds, videos
+*.pth
+*.ply
+*.mp4
+*.pt
+*.h5
+*.ckpt
+
+# Env / experiment trackers
+.env
+.venv/
+venv/
+wandb/
+
+.DS_Store
+.cursor/

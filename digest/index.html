@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Phys4DGS - Multi-Material Segmenter & Trajectory Digest Dashboard</title>
+  <meta name="description" content="Interactive 3D Point-Cloud Material Segmentation & PhysGaussian MPM Simulation Digest Dashboard">
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Three.js & OrbitControls -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="brand">
+        <div class="logo-icon">
+          <i class="fa-solid fa-cubes-stacked"></i>
+        </div>
+        <div class="brand-text">
+          <h1>Phys4DGS Digest Dashboard</h1>
+          <span class="sub-title">Multi-Material Heuristic Segmentation & MPM Physics Trajectory Pipeline</span>
+        </div>
+      </div>
+      
+      <!-- Model Selector Dropdown -->
+      <div class="header-controls">
+        <div class="model-select-box">
+          <label for="model-selector" id="model-select-label"><i class="fa-solid fa-box-open"></i> Dataset Model:</label>
+          <select id="model-selector" class="select-input">
+            <!-- Dynamically populated from manifest.json -->
+          </select>
+        </div>
+
+        <div class="header-status">
+          <span class="badge badge-live">
+            <i class="fa-solid fa-bolt"></i> Interactive WebGL 3D
+          </span>
+          <span class="badge badge-version">
+            <i class="fa-solid fa-code-branch"></i> PhysGaussian v2.0
+          </span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Pipeline Stage Stepper Bar -->
+    <nav class="pipeline-stepper" aria-label="Pipeline Stages">
+      <div class="stepper-title"><i class="fa-solid fa-diagram-next"></i> Pipeline Stage:</div>
+      <div class="stage-tabs" id="stage-tabs-container">
+        <button class="stage-tab active" data-stage="1">
+          <span class="tab-step">01</span>
+          <span class="tab-name">Raw 3DGS</span>
+        </button>
+        <button class="stage-tab" data-stage="2">
+          <span class="tab-step">02</span>
+          <span class="tab-name">Spatial Base Cutoff</span>
+        </button>
+        <button class="stage-tab" data-stage="3">
+          <span class="tab-step">03</span>
+          <span class="tab-name">Chromatic / SH</span>
+        </button>
+        <button class="stage-tab" data-stage="4">
+          <span class="tab-step">04</span>
+          <span class="tab-name">DBSCAN Filtered</span>
+        </button>
+        <button class="stage-tab" data-stage="5">
+          <span class="tab-step">05</span>
+          <span class="tab-name">MPM Physics Tags</span>
+        </button>
+      </div>
+    </nav>
+
+    <!-- Quantitative Metrics & Refinement Overview Bar -->
+    <section class="metrics-bar" id="metrics-bar">
+      <div class="metrics-card rating-card">
+        <span class="metrics-label"><i class="fa-solid fa-award"></i> Quality Rating</span>
+        <span id="metric-quality-badge" class="badge badge-quality rating-good">GOOD</span>
+      </div>
+      <div class="metrics-card">
+        <span class="metrics-label"><i class="fa-solid fa-chart-line"></i> Silhouette Score</span>
+        <span id="metric-silhouette" class="metrics-val">0.000</span>
+      </div>
+      <div class="metrics-card">
+        <span class="metrics-label"><i class="fa-solid fa-filter"></i> Speckle Noise Ratio</span>
+        <span id="metric-speckle" class="metrics-val">0.0%</span>
+      </div>
+      <div class="metrics-card">
+        <span class="metrics-label"><i class="fa-solid fa-arrows-rotate"></i> Refinement Loop</span>
+        <span id="metric-refinement-turns" class="metrics-val">1 Iteration</span>
+      </div>
+    </section>
+
+    <!-- Main Grid Dashboard Layout -->
+    <main class="dashboard-grid">
+      
+      <!-- Panel 1: 3D Point-Cloud WebGL Viewport -->
+      <section class="panel-card viewport-panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <i class="fa-solid fa-eye"></i>
+            <h2>Panel 1: 3D Point-Cloud Viewport</h2>
+          </div>
+          <div class="viewport-actions">
+            <button id="btn-toggle-ref" class="btn btn-secondary btn-sm" title="Show 3DGS Scene Reference Render">
+              <i class="fa-solid fa-image"></i> 3DGS Ref Render
+            </button>
+            <button id="btn-reset-cam" class="btn btn-secondary btn-sm">
+              <i class="fa-solid fa-camera-rotate"></i> Reset View
+            </button>
+            <button id="btn-toggle-rotate" class="btn btn-secondary btn-sm">
+              <i class="fa-solid fa-arrows-spin"></i> Auto-Rotate
+            </button>
+          </div>
+        </div>
+
+        <div class="canvas-wrapper">
+          <div id="three-canvas-container"></div>
+          
+          <!-- Reference Render Card Overlay -->
+          <div id="reference-image-overlay" class="reference-overlay hidden">
+            <div class="reference-card-header">
+              <span><i class="fa-solid fa-image"></i> Ground-Truth 3DGS Scene Render</span>
+              <button id="btn-close-ref" class="btn-close"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="reference-card-body">
+              <img id="reference-image-display" src="" alt="3DGS Ground-Truth Scene Render">
+            </div>
+          </div>
+
+          <!-- Overlays -->
+          <div class="viewport-overlay top-left">
+            <div class="overlay-stat">
+              <span class="stat-label">Model:</span>
+              <span id="overlay-model-name" class="stat-val highlight">---</span>
+            </div>
+            <div class="overlay-stat">
+              <span class="stat-label">Stage:</span>
+              <span id="overlay-stage-name" class="stat-val highlight">1. Raw 3DGS Base</span>
+            </div>
+            <div class="overlay-stat">
+              <span class="stat-label">Particles:</span>
+              <span id="overlay-particle-count" class="stat-val">---</span>
+            </div>
+          </div>
+
+          <div class="viewport-overlay bottom-right">
+            <div id="viewport-legend" class="legend-box">
+              <!-- Dynamically populated legend -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Panel 2: Frame-by-Frame Simulation Trajectory Player -->
+      <section class="panel-card player-panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <i class="fa-solid fa-film"></i>
+            <h2>Panel 2: Frame-by-Frame Simulation Player</h2>
+          </div>
+          <div class="player-metrics">
+            <span id="frame-counter" class="badge badge-frame">Frame 00 / 29</span>
+            <span id="time-counter" class="badge badge-time">t = 0.000s</span>
+          </div>
+        </div>
+
+        <div class="player-screen-wrapper">
+          <img id="frame-image" src="" alt="Simulation Frame Preview" class="frame-canvas-display">
+          
+          <div class="player-overlay-tag">
+            <i class="fa-solid fa-play"></i> MPM Physical Impulse Trajectory
+          </div>
+        </div>
+
+        <!-- Frame Controls Bar -->
+        <div class="player-controls-bar">
+          <div class="playback-buttons">
+            <button id="btn-first-frame" class="btn btn-ctrl" title="Rewind to First Frame">
+              <i class="fa-solid fa-backward-step"></i>
+            </button>
+            <button id="btn-prev-frame" class="btn btn-ctrl" title="Step Back 1 Frame (-1)">
+              <i class="fa-solid fa-chevron-left"></i>
+            </button>
+            <button id="btn-play-pause" class="btn btn-primary btn-play" title="Play / Pause">
+              <i class="fa-solid fa-play" id="play-pause-icon"></i>
+            </button>
+            <button id="btn-next-frame" class="btn btn-ctrl" title="Step Forward 1 Frame (+1)">
+              <i class="fa-solid fa-chevron-right"></i>
+            </button>
+            <button id="btn-last-frame" class="btn btn-ctrl" title="Jump to Last Frame">
+              <i class="fa-solid fa-forward-step"></i>
+            </button>
+          </div>
+
+          <!-- Scrubbing Timeline Slider -->
+          <div class="timeline-slider-wrapper">
+            <input type="range" id="frame-slider" min="0" max="29" value="0" step="1" class="timeline-slider">
+          </div>
+
+          <!-- Speed Dropdown -->
+          <div class="speed-selector">
+            <label for="speed-select" id="speed-label"><i class="fa-solid fa-gauge-high"></i> Speed:</label>
+            <select id="speed-select" class="select-input-sm">
+              <option value="0.5">0.5x</option>
+              <option value="1.0" selected>1.0x</option>
+              <option value="1.5">1.5x</option>
+              <option value="2.0">2.0x</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <!-- Panel 3: LLM Heuristic Choice & Rationale Inspector -->
+      <section class="panel-card info-panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <i class="fa-solid fa-brain"></i>
+            <h2>Panel 3: LLM Heuristic Choice & Rationale</h2>
+          </div>
+        </div>
+        
+        <div class="panel-body scrollable">
+          <div class="info-section">
+            <h3><i class="fa-solid fa-image"></i> 3DGS Ground-Truth Scene Render</h3>
+            <div class="reference-preview-box">
+              <img id="panel-reference-img" src="" alt="3DGS Scene Reference Render" class="reference-thumb">
+            </div>
+          </div>
+
+          <div class="info-section">
+            <h3><i class="fa-solid fa-magnifying-glass"></i> Extracted Scene Metadata</h3>
+            <div id="metadata-box" class="code-block">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+
+          <div class="info-section">
+            <h3><i class="fa-solid fa-list-check"></i> Selected Heuristic Pipeline Steps</h3>
+            <div id="heuristics-list" class="steps-list">
+              <!-- Dynamically populated steps -->
+            </div>
+          </div>
+
+          <div class="info-section">
+            <h3><i class="fa-solid fa-square-poll-vertical"></i> Quantitative Cluster Quality Metrics</h3>
+            <div id="metrics-breakdown-box" class="metrics-details-container">
+              <!-- Dynamically populated per-tag variance & speckle table -->
+            </div>
+          </div>
+
+          <div class="info-section">
+            <h3><i class="fa-solid fa-arrows-spin"></i> LLM Iterative Feedback Self-Correction Loop</h3>
+            <div id="refinement-history-box" class="refinement-timeline">
+              <!-- Dynamically populated multi-turn refinement timeline -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Panel 4: Continuum Physics Mechanical Property Table -->
+      <section class="panel-card physics-panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <i class="fa-solid fa-atom"></i>
+            <h2>Panel 4: Physical Properties Matrix</h2>
+          </div>
+        </div>
+
+        <div class="table-container">
+          <table class="physics-table">
+            <thead>
+              <tr>
+                <th>Tag / Part</th>
+                <th>$E$ (Pa)</th>
+                <th>$\nu$</th>
+                <th>$\rho$ (kg/m³)</th>
+                <th>$\mu$ Shear (Pa)</th>
+                <th>$\lambda$ Bulk (Pa)</th>
+              </tr>
+            </thead>
+            <tbody id="physics-table-body">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Panel 5: Material Tag Distribution Breakdown -->
+      <section class="panel-card breakdown-panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <i class="fa-solid fa-chart-pie"></i>
+            <h2>Panel 5: Material Tag Distribution</h2>
+          </div>
+        </div>
+
+        <div id="material-breakdown-list" class="breakdown-list">
+          <!-- Dynamically populated progress bars -->
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
