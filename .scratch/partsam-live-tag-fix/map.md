@@ -9,7 +9,7 @@ A written spec that names the allowed change to the PartSAM seam so a later sess
 - Effort slug: `partsam-live-tag-fix`
 - Domain: Phys4DGS glossary in `CONTEXT.md` (Material Tag Tensor, PhysGaussian MPM Solver). Policy being amended: [PartSAM as Material Tag Tensor source](../partsam-as-tagger/spec.md). Wired producer: [Wire PartSAM as Material Tag Tensor producer in src/](../partsam-src-wiring/map.md). Live evidence: `data/outputs/partsam/`, `data/outputs/tags/material_tags.pt`. Trial: [Ficus PartSAM trial](../partsam-ficus-trial/map.md) ([RESULT.md](../partsam-ficus-trial/RESULT.md)).
 - Skills: `/research`, `/grilling`, `/domain-modeling`; `/writing-for-agents` on the spec.
-- This effort **writes** `spec.md` (and, if the spec-home ticket says so, a patch to the PartSAM-as-tagger spec). No `src/` change. No full-length `configs/ficus.json` (125-frame) campaign. No `CONTEXT.md` PartSAM term.
+- This effort **amends** [PartSAM as Material Tag Tensor source](../partsam-as-tagger/spec.md) in place. No second `spec.md` here. No `src/` change. No full-length `configs/ficus.json` (125-frame) campaign. No `CONTEXT.md` PartSAM term.
 - Research notes: `.scratch/partsam-live-tag-fix/research/`
 - Standing:
   - The object of the fix is the **Material Tag Tensor**, not a PhysGaussian MPM Solver rewrite. CUDA 700 at frame 95 is a symptom of a plant that lifted with **zero** trunk tags.
@@ -25,11 +25,12 @@ A written spec that names the allowed change to the PartSAM seam so a later sess
 - [Later execution success bar](issues/07-later-execution-success-bar.md) — Generic: *N* matches; every prompted Stage 2 ID is non-empty on the lifted Material Tag Tensor; 5-frame solver exit 0, finite, no CUDA 700; 125-frame wind stays out. No trunk > 1 000.
 - [Which merge rule now](issues/04-which-merge-rule-now.md) — IoU merge stays; if a prompted ID is empty after lift, restore that group’s full raw mask (several empties: increasing IoU). Not named trunk > leaves > pot.
 - [Is Stage 2 in the fix](issues/05-is-stage-2-in-the-fix.md) — In: sample-bound skip (no reuse of another 100k’s xyz). No new negatives rule.
+- [Where the spec lives](issues/06-where-the-spec-lives.md) — Amend the PartSAM-as-tagger spec in place. No `.scratch/partsam-live-tag-fix/spec.md`.
+- [Write the live tagging-fix spec](issues/08-write-spec.md) — [spec.md](../partsam-as-tagger/spec.md) amended in place (sample-bound skip, IoU + survival, later-map done-when).
 
 ## Not yet specified
 
 - A later implementation map (`src/segmentation/partsam/merge.py`, `run_pipeline.sh` re-run).
-- Orientation one-liner once the spec exists.
 
 ## Out of scope
 
