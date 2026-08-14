@@ -1,4 +1,4 @@
-"""Locate gitignored PhysGaussian / FlashSplat clones. Do not vendor their sources in-tree."""
+"""Locate gitignored PhysGaussian / FlashSplat / PartSAM clones. Do not vendor their sources in-tree."""
 
 from __future__ import annotations
 
@@ -82,6 +82,22 @@ def get_flashsplat_root() -> str:
             "FlashSplat clone not found. Set FLASHSPLAT_ROOT or clone:\n"
             "  git clone --recurse-submodules "
             "https://github.com/florinshen/FlashSplat.git third_party/FlashSplat"
+        )
+    return found
+
+
+def get_partsam_root() -> str:
+    """PARTSAM_ROOT, then third_party/PartSAM. Weights stay in that clone’s pretrained/."""
+    found = _first_existing(
+        [
+            os.environ.get("PARTSAM_ROOT", ""),
+            os.path.join(_PROJECT_ROOT, "third_party", "PartSAM"),
+        ]
+    )
+    if found is None or not os.path.isdir(os.path.join(found, "partfield")):
+        raise FileNotFoundError(
+            "PartSAM clone not found. Set PARTSAM_ROOT or clone:\n"
+            "  git clone https://github.com/czvvd/PartSAM.git third_party/PartSAM"
         )
     return found
 
