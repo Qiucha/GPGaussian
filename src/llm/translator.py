@@ -2,7 +2,7 @@
 Few-Shot Motion Translation Engine & System Prompt Orchestrator for PhysGaussian.
 """
 
-from typing import Dict, Any, Tuple, Optional
+from typing import Dict, Any, Tuple, Optional, List
 from llm.motion_library import MotionLibraryRetriever
 from llm.validator import validate_physgaussian_config
 
@@ -83,3 +83,20 @@ class MotionTranslator:
             return config, reasoning
 
         raise NotImplementedError("Live LLM API endpoint call requires API key configuration.")
+
+    def critique(
+        self,
+        previous_config: Dict[str, Any],
+        previous_cot: str,
+        human_text: str,
+        frame_paths: Optional[List[str]] = None,
+    ) -> Tuple[Dict[str, Any], str]:
+        if not (human_text or "").strip():
+            raise ValueError("human text is required; empty or whitespace is not a critique turn")
+        if not self.mock_llm:
+            raise NotImplementedError("Live LLM API endpoint call requires API key configuration.")
+        validate_physgaussian_config(previous_config, previous=previous_config)
+        reasoning = "identity mock critique"
+        if frame_paths:
+            reasoning = f"{reasoning}; visual channel skipped (mock)"
+        return previous_config, reasoning

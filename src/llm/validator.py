@@ -3,7 +3,7 @@ Validation guardrails and stability protocols for PhysGaussian simulation config
 """
 
 import math
-from typing import Tuple, Dict, Any
+from typing import Tuple, Dict, Any, Optional
 
 
 def calculate_p_wave_speed(E: float, nu: float, density: float) -> float:
@@ -23,32 +23,57 @@ def calculate_p_wave_speed(E: float, nu: float, density: float) -> float:
     return math.sqrt(numerator / denominator)
 
 
-def validate_physgaussian_config(config: Dict[str, Any], max_cfl: float = 0.5) -> Tuple[bool, str]:
+def validate_physgaussian_config(
+    config: Dict[str, Any],
+    max_cfl: float = 0.5,
+    previous: Optional[Dict[str, Any]] = None,
+) -> Tuple[bool, str]:
     """
     Validates a PhysGaussian configuration object against physical stability and CFL criteria.
 
+    When ``previous`` is set (Motion Critique Loop), omit of a previous key is invalid
+    and the ``materials`` key set is frozen to the previous table.
+
     Args:
-        config: Simulation configuration dictionary.
+        config: Simulation configuration dictionary (candidate).
         max_cfl: Maximum allowable CFL ratio (default 0.5).
+        previous: Prior complete ``--config`` dict, or None for first-shot / CFL-only.
 
     Returns:
         Tuple of (is_valid: bool, status_message: str)
 
     Raises:
-        ValueError: If Poisson ratio is singular or CFL stability condition is violated.
+        ValueError: If Poisson ratio is singular, CFL is violated, a previous key is
+            omitted, or the materials key set changed.
     """
+    if previous is not None:
+        omitted = [key for key in previous if key not in config]
+        if omitted:
+            raise ValueError(
+                f"omit of previous config key(s) is invalid: {omitted}"
+            )
+        previous_materials = previous.get("materials") or {}
+        candidate_materials = config.get("materials")
+        if not isinstance(candidate_materials, dict) or set(candidate_materials) != set(
+            previous_materials
+        ):
+            raise ValueError(
+                "materials key set is frozen to the previous table "
+                "(no new rows, including unlabeled '0')"
+            )
+        materials = candidate_materials
+    else:
+        materials = config.get("materials", {})
+        if not materials:
+            E_global = config.get("E", 1e5)
+            nu_global = config.get("nu", 0.3)
+            rho_global = config.get("density", 1000.0)
+            materials = {"0": {"E": E_global, "nu": nu_global, "density": rho_global}}
+
     substep_dt = config.get("substep_dt", 1e-4)
     n_grid = config.get("n_grid", 100)
     grid_lim = config.get("grid_lim", 2.0)
     dx = (2.0 * grid_lim) / float(n_grid)
-
-    materials = config.get("materials", {})
-    if not materials:
-        # Fallback to top-level scalar material properties if multi-material map absent
-        E_global = config.get("E", 1e5)
-        nu_global = config.get("nu", 0.3)
-        rho_global = config.get("density", 1000.0)
-        materials = {"0": {"E": E_global, "nu": nu_global, "density": rho_global}}
 
     for tag, mat in materials.items():
         nu = mat.get("nu", 0.3)

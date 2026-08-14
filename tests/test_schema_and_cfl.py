@@ -1,4 +1,5 @@
 import unittest
+import copy
 import numpy as np
 
 
@@ -87,6 +88,41 @@ class TestPhysGaussianLLMConfigValidator(unittest.TestCase):
         with self.assertRaises(ValueError) as ctx:
             validate_physgaussian_config(invalid_config)
         self.assertIn("CFL condition violated", str(ctx.exception))
+
+    def test_omit_of_previous_config_key_raises(self):
+        from llm.validator import validate_physgaussian_config
+
+        previous = copy.deepcopy(self.valid_config)
+        candidate = copy.deepcopy(self.valid_config)
+        del candidate["boundary_conditions"]
+        with self.assertRaises(ValueError) as ctx:
+            validate_physgaussian_config(candidate, previous=previous)
+        self.assertIn("omit", str(ctx.exception).lower())
+
+    def test_new_materials_row_including_unlabeled_zero_raises(self):
+        from llm.validator import validate_physgaussian_config
+
+        previous = copy.deepcopy(self.valid_config)
+        candidate = copy.deepcopy(self.valid_config)
+        candidate["materials"]["3"] = {"E": 1e4, "nu": 0.4, "density": 200.0}
+        with self.assertRaises(ValueError) as ctx:
+            validate_physgaussian_config(candidate, previous=previous)
+        self.assertIn("materials", str(ctx.exception).lower())
+
+        candidate = copy.deepcopy(self.valid_config)
+        del candidate["materials"]["2"]
+        with self.assertRaises(ValueError):
+            validate_physgaussian_config(candidate, previous=previous)
+
+    def test_retuned_materials_values_with_frozen_keys_pass(self):
+        from llm.validator import validate_physgaussian_config
+
+        previous = copy.deepcopy(self.valid_config)
+        candidate = copy.deepcopy(self.valid_config)
+        candidate["materials"]["2"]["E"] = 5e3
+        is_valid, msg = validate_physgaussian_config(candidate, previous=previous)
+        self.assertTrue(is_valid)
+        self.assertIn("Config is valid", msg)
 
     def test_valid_segmenter_execution_plan(self):
         from llm.schema import validate_segmenter_execution_plan
