@@ -19,8 +19,9 @@ A comprehensive Research & Architecture Specification (RFC) for a Few-Shot LLM M
 
 ## Not yet specified
 
-- **LLM Real-Time Feedback Loop:** Closed-loop refinement of MPM parameters based on user critique or visual output tokens.
 - **Physics Solver Kernel Optimization:** Custom CUDA kernels for per-particle material parameter decoding in Warp MPM.
+
+Leftover **LLM Real-Time Feedback Loop** fog graduated to [Motion Critique Loop spec](../mpm-critique-loop/map.md) (new destination; this map stays closed).
 
 ## Out of scope
 

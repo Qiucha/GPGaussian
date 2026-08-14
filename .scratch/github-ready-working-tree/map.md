@@ -13,7 +13,7 @@ A GitHub-ready working tree: Phys4DGS-owned code only, third-party clones consum
   - Do not create a remote or push until the human explicitly asks.
   - Fresh root commit so bytecode and any later accidents never ship in history.
   - This map **does** carry execution (gitignore, drop copies, orphan commit) once decisions unblock it.
-- Inventory already known (workspace, not tickets): `data/` ~5G and `.trash/` ~1.2G stay local; no remotes; no root README/LICENSE/.gitignore; 44 `__pycache__/*.pyc` files are already tracked; `src/simulation/` and related rendering files are path-rewritten copies of PhysGaussian.
+- Inventory already known (workspace, not tickets): `data/` ~5G and `.trash/` stay local; published history is a small root commit plus follow-ups; remote is https://github.com/Qiucha/GPGaussian.git (`main`).
 
 ## Decisions so far
 
@@ -27,10 +27,8 @@ A GitHub-ready working tree: Phys4DGS-owned code only, third-party clones consum
 ## Not yet specified
 
 - Longer README narrative (paper abstract, full architecture) if you want more than clone/install.
-- GitHub org, visibility, and repository name (only relevant at push time).
 
 ## Out of scope
 
-- Creating a GitHub remote or the first push.
 - Git LFS or uploading `data/` checkpoints, `.ply`, or simulation outputs.
 - The Few-Shot LLM Motion Library RFC (separate map under `.scratch/llm-motion-physgaussian/`).

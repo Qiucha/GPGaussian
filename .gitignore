@@ -30,6 +30,15 @@ build/
 *.pt
 *.h5
 *.ckpt
+*.npy
+*.npz
+
+# Local PartSAM ficus trial residue (keep markdown map/issues/research/notes)
+.scratch/partsam-ficus-trial/*.py
+.scratch/partsam-ficus-trial/*.json
+.scratch/partsam-ficus-trial/*.log
+.scratch/partsam-ficus-trial/*.png
+.scratch/partsam-ficus-trial/mpm_short/
 
 # Env / experiment trackers
 .env
