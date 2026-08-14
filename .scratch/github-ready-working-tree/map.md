@@ -21,10 +21,12 @@ A GitHub-ready working tree: Phys4DGS-owned code only, third-party clones consum
 - [How to consume PhysGaussian as upstream instead of in-tree copies](issues/01-physgaussian-upstream-consume.md) — Clone PhysGaussian with recurse-submodules into gitignored `third_party/`; drop copied Warp/render files; keep `materials` + `lame_params` as the delta.
 - [How to consume Gaussian Splatting and FlashSplat as upstream](issues/02-gs-and-flashsplat-upstream-consume.md) — Simulation uses PhysGaussian’s 3DGS submodule; FlashSplat is a separate clone; do not dual-insert both on `sys.path`.
 - [Replace in-tree PhysGaussian copies with upstream imports](issues/04-replace-physgaussian-copies-with-upstream.md) — `src/upstream.py` locates clones; Warp/filling/render copies removed; `materials` overlay and thin camera/checkpoint wrappers kept.
+- [Ignore rules, drop bytecode, fresh root commit](issues/05-gitignore-and-orphan-commit.md) — `.gitignore` plus single root commit `8d2d74b` on `main`; 216 files; no data/vendor/bytecode in history; no remote.
+- [Root README for upstream clones and the Phys4DGS delta](issues/06-root-readme-upstream-clone.md) — `README.md` documents `third_party/` clones (PhysGaussian `8339ed6`, FlashSplat `3e3b147`), env vars, and `run_pipeline.sh`.
 
 ## Not yet specified
 
-- Root README narrative beyond clone/install of upstreams and running the delta (clone/install itself is [Root README for upstream clones and the Phys4DGS delta](issues/06-root-readme-upstream-clone.md)).
+- Longer README narrative (paper abstract, full architecture) if you want more than clone/install.
 - GitHub org, visibility, and repository name (only relevant at push time).
 
 ## Out of scope

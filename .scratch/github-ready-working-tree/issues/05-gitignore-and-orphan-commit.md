@@ -1,7 +1,7 @@
 # 05 - Ignore rules, drop bytecode, fresh root commit
 
 Type: task
-Status: claimed
+Status: resolved
 Blocked by: 02, 03, 04
 
 ## Question
@@ -26,4 +26,8 @@ git branch -M main
 ```
 
 Do not add a remote or push. If the index was reset, `git add -A` after confirming `.gitignore` still excludes the local-only paths.
+
+## Answer
+
+Done on `main` as a single root commit `8d2d74b` (“Start from a GitHub-ready root commit without local data or vendored clones.”). 216 tracked files; no `__pycache__`, `data/`, `vendor/`, `.trash/`, or other local-only paths. No remote. `.gitignore` as described in Comments.
 
