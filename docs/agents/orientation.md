@@ -36,12 +36,16 @@ Full tables and paths: [repo current state](../../.scratch/agent-orientation/res
 ## How to run what exists
 
 ```bash
-python -m unittest tests.test_hybrid_segmentation tests.test_segmenter_agent tests.test_segmentation_metrics tests.test_schema_and_cfl tests.test_motion_critique tests.test_metadata tests.test_multi_model_benchmark tests.test_partsam_fps tests.test_partsam_surface tests.test_partsam_clicks tests.test_partsam_merge
+python -m unittest tests.test_hybrid_segmentation tests.test_segmenter_agent tests.test_segmentation_metrics tests.test_schema_and_cfl tests.test_motion_critique tests.test_metadata tests.test_multi_model_benchmark tests.test_partsam_fps tests.test_partsam_surface tests.test_partsam_clicks tests.test_partsam_merge tests.test_render_quality_metrics
 python scripts/test_all_models.py
 python scripts/export_pipeline_data.py
 ./scripts/run_pipeline.sh
 ./scripts/run_simulation.sh ficus <exp>
 ./scripts/run_vasedeck.sh
+# CUDA host: six-scene multi-material MPM + render QA (smoke default; add --full for config frame_num)
+python scripts/run_multi_model_pipeline.py --dry-run
+python scripts/run_multi_model_pipeline.py --smoke-frames 5
+python scripts/verify_render_quality.py --sim-dir data/outputs/multi_model_qa/ficus/smoke --expected-frames 5
 ```
 
 Serve `digest/` as static files so `fetch("data/manifest.json")` works. Tests that import `llm.*` / `eval.*` / `simulation.*` need `PYTHONPATH=src`.

@@ -38,6 +38,16 @@ class TestGoldStandardEvaluationSuite(unittest.TestCase):
         self.assertAlmostEqual(win_rate, 76.67, places=1)
         self.assertTrue(p_val < 0.01)  # Statistically significant
 
+    def test_psnr_ssim_smoke(self):
+        from eval.evaluate_realism import compute_psnr, compute_ssim
+
+        img = np.zeros((16, 16, 3), dtype=np.float64)
+        img[..., 0] = 0.2
+        img[..., 1] = 0.5
+        img[..., 2] = 0.8
+        self.assertEqual(compute_psnr(img, img), float("inf"))
+        self.assertGreater(compute_ssim(img, img), 0.99)
+
 
 if __name__ == "__main__":
     unittest.main()

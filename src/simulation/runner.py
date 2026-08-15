@@ -80,12 +80,18 @@ if __name__ == "__main__":
     parser.add_argument("--white_bg", action="store_true")
     parser.add_argument("--debug", action="store_true")
     parser.add_argument("--tags_path", type=str, default=None, help="Path to material_tags.pt")
+    parser.add_argument(
+        "--frame_num",
+        type=int,
+        default=None,
+        help="Optional override for config frame_num (smoke / short QA runs)",
+    )
     args = parser.parse_args()
 
     if not os.path.exists(args.model_path):
-        AssertionError("Model path does not exist!")
+        raise AssertionError("Model path does not exist!")
     if not os.path.exists(args.config):
-        AssertionError("Scene config does not exist!")
+        raise AssertionError("Scene config does not exist!")
     if args.output_path is not None and not os.path.exists(args.output_path):
         os.makedirs(args.output_path)
 
@@ -98,6 +104,11 @@ if __name__ == "__main__":
         preprocessing_params,
         camera_params,
     ) = decode_param_json(args.config)
+    if args.frame_num is not None:
+        if args.frame_num < 1:
+            raise ValueError("--frame_num must be >= 1")
+        time_params["frame_num"] = int(args.frame_num)
+        print(f"Overriding frame_num -> {time_params['frame_num']}")
 
     # load gaussians
     print("Loading gaussians...")
