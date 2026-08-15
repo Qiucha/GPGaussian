@@ -4,9 +4,8 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from src.segmentation.partsam.clicks import run_stage_clicks
-from src.segmentation.partsam.infer import run_stage_lift
-from src.segmentation.partsam.merge import DEFAULT_TAGS_PATH
+from src.segmentation.partsam.clicks import clicks_json_path, run_stage_clicks
+from src.segmentation.partsam.merge import DEFAULT_TAGS_PATH, check_occupancy
 from src.segmentation.partsam.surface import run_stage_surface
 
 DEFAULT_OUTPUT_DIR = Path("data/outputs/partsam")
@@ -37,6 +36,11 @@ def _parser() -> argparse.ArgumentParser:
         help="Skip Stage 3 when --tags_path already exists.",
     )
     parser.add_argument(
+        "--check-occupancy",
+        action="store_true",
+        help="Exit 0 if tags length is N and every prompted Stage 2 id is occupied; else 1.",
+    )
+    parser.add_argument(
         "--stage",
         choices=("surface", "clicks", "lift"),
         default=None,
@@ -47,6 +51,13 @@ def _parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> None:
     args = _parser().parse_args(argv)
+    if args.check_occupancy:
+        ok = check_occupancy(
+            args.tags_path, args.model_path, clicks_json_path(args.output_dir)
+        )
+        raise SystemExit(0 if ok else 1)
+    from src.segmentation.partsam.infer import run_stage_lift
+
     stages = (args.stage,) if args.stage else ("surface", "clicks", "lift")
     for stage in stages:
         if stage == "surface":

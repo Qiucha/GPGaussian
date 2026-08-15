@@ -14,8 +14,8 @@ from src.segmentation.partsam.merge import (
     DEFAULT_TAGS_PATH,
     GROUP_NAMES,
     PART_MASKS_NAME,
-    lift_tags,
-    merge_masks,
+    apply_survival,
+    rematerialize_tags,
     write_chosen_iou,
     write_material_tags,
     write_part_masks,
@@ -196,9 +196,15 @@ def run_stage_lift(
     dest = Path(tags_path)
     if reuse_tags and dest.exists():
         return dest
+    out = Path(output_dir)
+    gaussian_xyz, _ = load_gaussian_means_rgb(model_path)
+    masks_path = out / PART_MASKS_NAME
+    iou_path = out / CHOSEN_IOU_NAME
+    if masks_path.is_file() and iou_path.is_file():
+        return rematerialize_tags(out, dest, gaussian_xyz)
+
     from src.upstream import get_partsam_root
 
-    out = Path(output_dir)
     sample = load_sample_100k(sample_npz_path(out))
     clicks = load_clicks(clicks_json_path(out))
     validate_clicks(clicks)
@@ -207,8 +213,13 @@ def run_stage_lift(
     masks, ious = predict_group_masks(dict(sample), clicks, mesh_verts, faces, model, device)
     write_part_masks(out / PART_MASKS_NAME, masks["pot"], masks["trunk"], masks["leaves"])
     write_chosen_iou(out / CHOSEN_IOU_NAME, ious)
-    merged = merge_masks(masks["pot"], masks["trunk"], masks["leaves"], ious)
-    gaussian_xyz, _ = load_gaussian_means_rgb(model_path)
-    lifted = lift_tags(gaussian_xyz, np.asarray(sample["coords"]), merged)
+    lifted = apply_survival(
+        masks["pot"],
+        masks["trunk"],
+        masks["leaves"],
+        ious,
+        np.asarray(sample["coords"]),
+        gaussian_xyz,
+    )
     write_material_tags(dest, lifted)
     return dest

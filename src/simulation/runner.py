@@ -34,6 +34,7 @@ from particle_filling.filling import *
 
 # Utils
 from src.simulation.config import *
+from src.simulation.time_params import apply_frame_num_override
 from src.rendering.transforms import *
 from src.rendering.camera import *
 from src.rendering.rasterize import *
@@ -80,6 +81,12 @@ if __name__ == "__main__":
     parser.add_argument("--white_bg", action="store_true")
     parser.add_argument("--debug", action="store_true")
     parser.add_argument("--tags_path", type=str, default=None, help="Path to material_tags.pt")
+    parser.add_argument(
+        "--frame_num",
+        type=int,
+        default=None,
+        help="Override config time_params frame_num (one-off smoke; leave unset for JSON value).",
+    )
     args = parser.parse_args()
 
     if not os.path.exists(args.model_path):
@@ -98,6 +105,7 @@ if __name__ == "__main__":
         preprocessing_params,
         camera_params,
     ) = decode_param_json(args.config)
+    apply_frame_num_override(time_params, args.frame_num)
 
     # load gaussians
     print("Loading gaussians...")

@@ -65,6 +65,108 @@ class TestPartsamMergeLift(unittest.TestCase):
             np.array([TAG_POT, TAG_TRUNK, TAG_LEAVES, TAG_LEAVES], dtype=np.int32),
         )
 
+    def test_survival_restore_fills_prompted_id_empty_after_first_lift(self):
+        from src.segmentation.partsam.merge import (
+            TAG_LEAVES,
+            TAG_POT,
+            TAG_TRUNK,
+            apply_survival,
+            lift_tags,
+            merge_masks,
+        )
+
+        pot = np.array([1, 0, 0, 0], dtype=np.uint8)
+        trunk = np.array([0, 1, 1, 0], dtype=np.uint8)
+        leaves = np.array([0, 1, 0, 1], dtype=np.uint8)
+        sample_xyz = np.array(
+            [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [1.05, 0.0, 0.0], [10.0, 0.0, 0.0]],
+            dtype=np.float32,
+        )
+        gaussians = np.array(
+            [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [10.0, 0.0, 0.0]],
+            dtype=np.float32,
+        )
+        iou = {"pot": 0.4, "trunk": 0.2, "leaves": 0.9}
+        first = lift_tags(
+            gaussians, sample_xyz, merge_masks(pot, trunk, leaves, iou)
+        )
+        self.assertEqual(int((first == TAG_TRUNK).sum()), 0)
+        lifted = apply_survival(pot, trunk, leaves, iou, sample_xyz, gaussians)
+        self.assertGreater(int((lifted == TAG_TRUNK).sum()), 0)
+        self.assertGreater(int((lifted == TAG_POT).sum()), 0)
+        self.assertGreater(int((lifted == TAG_LEAVES).sum()), 0)
+
+    def test_survival_restores_two_empty_ids_in_increasing_iou(self):
+        from src.segmentation.partsam.merge import (
+            TAG_LEAVES,
+            TAG_POT,
+            TAG_TRUNK,
+            apply_survival,
+            lift_tags,
+            merge_masks,
+        )
+
+        pot = np.array([1, 1, 0, 0], dtype=np.uint8)
+        trunk = np.array([0, 1, 1, 0], dtype=np.uint8)
+        leaves = np.array([1, 1, 1, 1], dtype=np.uint8)
+        sample_xyz = np.array(
+            [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [2.0, 0.0, 0.0], [3.0, 0.0, 0.0]],
+            dtype=np.float32,
+        )
+        gaussians = np.array(
+            [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [2.0, 0.0, 0.0], [3.0, 0.0, 0.0]],
+            dtype=np.float32,
+        )
+        iou = {"pot": 0.1, "trunk": 0.2, "leaves": 0.9}
+        first = lift_tags(
+            gaussians, sample_xyz, merge_masks(pot, trunk, leaves, iou)
+        )
+        self.assertEqual(int((first == TAG_POT).sum()), 0)
+        self.assertEqual(int((first == TAG_TRUNK).sum()), 0)
+        lifted = apply_survival(pot, trunk, leaves, iou, sample_xyz, gaussians)
+        self.assertEqual(int(lifted[1]), TAG_TRUNK)
+        self.assertGreater(int((lifted == TAG_POT).sum()), 0)
+        self.assertGreater(int((lifted == TAG_TRUNK).sum()), 0)
+        self.assertGreater(int((lifted == TAG_LEAVES).sum()), 0)
+
+    def test_survival_skips_group_with_empty_raw_mask(self):
+        from src.segmentation.partsam.merge import TAG_LEAVES, TAG_POT, TAG_TRUNK, apply_survival
+
+        pot = np.zeros(3, dtype=np.uint8)
+        trunk = np.array([1, 0, 0], dtype=np.uint8)
+        leaves = np.array([0, 1, 1], dtype=np.uint8)
+        sample_xyz = np.array(
+            [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [2.0, 0.0, 0.0]],
+            dtype=np.float32,
+        )
+        gaussians = np.array(
+            [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [2.0, 0.0, 0.0]],
+            dtype=np.float32,
+        )
+        iou = {"pot": 0.9, "trunk": 0.5, "leaves": 0.4}
+        lifted = apply_survival(pot, trunk, leaves, iou, sample_xyz, gaussians)
+        self.assertEqual(int((lifted == TAG_POT).sum()), 0)
+        self.assertGreater(int((lifted == TAG_TRUNK).sum()), 0)
+        self.assertGreater(int((lifted == TAG_LEAVES).sum()), 0)
+
+    def test_occupancy_rejects_length_mismatch(self):
+        from src.segmentation.partsam.merge import TAG_LEAVES, TAG_POT, TAG_TRUNK, occupancy_ok
+
+        tags = np.array([TAG_POT, TAG_TRUNK, TAG_LEAVES], dtype=np.int32)
+        self.assertFalse(occupancy_ok(tags, n=4, prompted_ids=(TAG_POT, TAG_TRUNK, TAG_LEAVES)))
+
+    def test_occupancy_rejects_empty_prompted_id(self):
+        from src.segmentation.partsam.merge import TAG_LEAVES, TAG_POT, TAG_TRUNK, occupancy_ok
+
+        tags = np.array([TAG_POT, TAG_LEAVES, TAG_LEAVES], dtype=np.int32)
+        self.assertFalse(occupancy_ok(tags, n=3, prompted_ids=(TAG_POT, TAG_TRUNK, TAG_LEAVES)))
+
+    def test_occupancy_passes_when_length_and_prompted_ids_occupied(self):
+        from src.segmentation.partsam.merge import TAG_LEAVES, TAG_POT, TAG_TRUNK, occupancy_ok
+
+        tags = np.array([TAG_POT, TAG_TRUNK, TAG_LEAVES], dtype=np.int32)
+        self.assertTrue(occupancy_ok(tags, n=3, prompted_ids=(TAG_POT, TAG_TRUNK, TAG_LEAVES)))
+
     def test_write_material_tags_int32_ids(self):
         from src.segmentation.partsam.merge import TAG_POT, TAG_TRUNK, write_material_tags
 

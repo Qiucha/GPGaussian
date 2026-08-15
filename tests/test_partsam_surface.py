@@ -24,7 +24,10 @@ class TestPartsamSurfacePersist(unittest.TestCase):
             write_sample_100k(path, coords, normals, colors, point_to_face)
             sample = load_sample_100k(path)
 
-        self.assertEqual(set(sample.keys()), {"coords", "normals", "colors", "point_to_face"})
+        self.assertEqual(
+            set(sample.keys()),
+            {"coords", "normals", "colors", "point_to_face", "sample_id"},
+        )
         self.assertEqual(sample["coords"].shape, (n, 3))
         self.assertEqual(sample["normals"].shape, (n, 3))
         self.assertEqual(sample["colors"].shape, (n, 3))

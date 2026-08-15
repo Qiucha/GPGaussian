@@ -18,7 +18,7 @@ The “4D” in the name is **time-varying 3DGS particles under physics**. There
 
 ## Current state
 
-**Works offline:** Heuristic Primitives (`src/segmentation/heuristics.py`); Segmenter Agent with `mock_llm=True`; schema/CFL; mock MotionTranslator (`translate` and `critique`); Motion Critique Loop driver (`src/llm/critique_loop.py`); Kabsch trajectory MSE and 2AFC; Warp runner; Digest Dashboard UI; `scripts/run_pipeline.sh` (PartSAM → PhysGaussian MPM Solver, or reuse `material_tags.pt`).
+**Works offline:** Heuristic Primitives (`src/segmentation/heuristics.py`); Segmenter Agent with `mock_llm=True`; schema/CFL; mock MotionTranslator (`translate` and `critique`); Motion Critique Loop driver (`src/llm/critique_loop.py`); Kabsch trajectory MSE and 2AFC; Warp runner; Digest Dashboard UI; `scripts/run_pipeline.sh` (PartSAM → PhysGaussian MPM Solver; reuse `material_tags.pt` only when occupancy holds).
 
 **Stubbed or incomplete:** live MotionTranslator `translate` / `critique` (`NotImplementedError`); LangSAM empty without `lang_sam`; FVD/KVD/PSNR/SSIM/LPIPS named but unimplemented; Dual-Mode Frame Player is image scrubbing only (glossary also names HTML5 video); digest “MPM” frames from `scripts/export_pipeline_data.py` are PIL offsets, not Warp; `scripts/run_pipeline.py` writes an empty tag tensor.
 
@@ -47,7 +47,7 @@ Serve `digest/` as static files so `fetch("data/manifest.json")` works. Tests th
 
 ## Next steps
 
-**Material Tag Tensor / PartSAM:** intended producer is wired in `src/segmentation/partsam`; `./scripts/run_pipeline.sh` is PartSAM → PhysGaussian MPM Solver. Policy: [PartSAM as Material Tag Tensor source](../../.scratch/partsam-as-tagger/spec.md).
+**Material Tag Tensor / PartSAM:** intended producer is wired in `src/segmentation/partsam`; live ficus 5-frame bar held. Policy: [PartSAM as Material Tag Tensor source](../../.scratch/partsam-as-tagger/spec.md).
 
 **Motion Critique Loop:** mock `critique` and driver are in `src/` (`python -m src.llm.critique_loop`); live `critique` is still `NotImplementedError`. `run_pipeline.sh` stays PartSAM → first solver run. Policy: [Motion Critique Loop spec](../../.scratch/mpm-critique-loop/spec.md). Segmenter Agent iteration is plan metrics.
 
@@ -68,7 +68,7 @@ Parallel RFC (not superseded): [Few-Shot LLM Motion Library & Granular Material 
 | [CONTEXT.md](../../CONTEXT.md) | Glossary only (Heuristic Primitive, Segmenter Agent, Material Tag Tensor, PhysGaussian MPM Solver, Digest Dashboard, Dual-Mode Frame Player) |
 | [docs/agents/domain.md](domain.md) | How to consume the glossary and ADRs |
 | [repo current state](../../.scratch/agent-orientation/research/01-repo-current-state.md) | Working vs stubbed |
-| [PartSAM as Material Tag Tensor source](../../.scratch/partsam-as-tagger/spec.md) | PartSAM tagging policy (reach on Material Tag Tensor / PartSAM / intended producer) |
+| [PartSAM as Material Tag Tensor source](../../.scratch/partsam-as-tagger/spec.md) | PartSAM tagging policy (reach on Material Tag Tensor / PartSAM / intended producer / occupancy) |
 | [Motion Critique Loop spec](../../.scratch/mpm-critique-loop/spec.md) | Post-run human-text retune of `--config` (reach on Motion Critique Loop / `critique` / `critique_loop`) |
 | [LLM-motion map](../../.scratch/llm-motion-physgaussian/map.md) | Parallel motion-to-config RFC |
 | `.scratch/agent-orientation/historical/` | `Dev Plan.md`, `design_decisions.md`, `digest.md`, legacy `issues/` — sediment, not live instruction |

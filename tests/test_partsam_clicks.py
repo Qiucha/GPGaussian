@@ -59,12 +59,31 @@ class TestPartsamClicks(unittest.TestCase):
         with self.assertRaises(ValueError):
             validate_clicks(doc)
 
-    def test_stage_clicks_skips_when_every_group_has_a_positive(self):
-        from src.segmentation.partsam.clicks import run_stage_clicks
+    def _write_sample(self, out: Path, xyz, colors):
+        from src.segmentation.partsam.surface import write_sample_100k
 
+        n = len(xyz)
+        write_sample_100k(
+            out / "sample_100k.npz",
+            xyz,
+            np.tile(np.array([0.0, 0.0, 1.0], dtype=np.float32), (n, 1)),
+            colors,
+            np.zeros(n, dtype=np.int32),
+        )
+
+    def test_stage_clicks_skips_when_complete_and_sample_ids_match(self):
+        from src.segmentation.partsam.clicks import (
+            run_stage_clicks,
+            stamp_clicks_sample_id,
+        )
+        from src.segmentation.partsam.surface import sample_id_from_coords
+
+        xyz, colors = _synthetic_cloud()
         doc = _complete_clicks([1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0])
+        stamp_clicks_sample_id(doc, sample_id_from_coords(xyz))
         with tempfile.TemporaryDirectory() as tmp:
             out = Path(tmp)
+            self._write_sample(out, xyz, colors)
             path = out / "clicks.json"
             path.write_text(json.dumps(doc))
             before = path.read_bytes()
@@ -74,6 +93,62 @@ class TestPartsamClicks(unittest.TestCase):
             )
             self.assertEqual(returned, path)
             self.assertEqual(path.read_bytes(), before)
+
+    def test_stage_clicks_does_not_skip_mismatched_sample_ids(self):
+        from src.segmentation.partsam.clicks import (
+            run_stage_clicks,
+            stamp_clicks_sample_id,
+        )
+        from src.segmentation.partsam.surface import sample_id_from_coords
+
+        xyz, colors = _synthetic_cloud()
+        doc = _complete_clicks([1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0])
+        stamp_clicks_sample_id(doc, "0" * len(sample_id_from_coords(xyz)))
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp)
+            self._write_sample(out, xyz, colors)
+            (out / "clicks.json").write_text(json.dumps(doc))
+            with self.assertRaises(RuntimeError):
+                run_stage_clicks(model_path=out / "missing", output_dir=out)
+            self.assertTrue((out / "click_candidates.json").exists())
+
+    def test_stage_clicks_does_not_skip_missing_clicks_sample_id(self):
+        from src.segmentation.partsam.clicks import run_stage_clicks
+
+        xyz, colors = _synthetic_cloud()
+        doc = _complete_clicks([1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0])
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp)
+            self._write_sample(out, xyz, colors)
+            (out / "clicks.json").write_text(json.dumps(doc))
+            with self.assertRaises(RuntimeError):
+                run_stage_clicks(model_path=out / "missing", output_dir=out)
+            self.assertTrue((out / "click_candidates.json").exists())
+
+    def test_stage_clicks_does_not_skip_missing_sample_persist_id(self):
+        from src.segmentation.partsam.clicks import (
+            run_stage_clicks,
+            stamp_clicks_sample_id,
+        )
+        from src.segmentation.partsam.surface import sample_id_from_coords
+
+        xyz, colors = _synthetic_cloud()
+        n = len(xyz)
+        doc = _complete_clicks([1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0])
+        stamp_clicks_sample_id(doc, sample_id_from_coords(xyz))
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp)
+            np.savez(
+                out / "sample_100k.npz",
+                coords=xyz.astype(np.float32),
+                normals=np.tile(np.array([0.0, 0.0, 1.0], dtype=np.float32), (n, 1)),
+                colors=colors,
+                point_to_face=np.zeros(n, dtype=np.int32),
+            )
+            (out / "clicks.json").write_text(json.dumps(doc))
+            with self.assertRaises(RuntimeError):
+                run_stage_clicks(model_path=out / "missing", output_dir=out)
+            self.assertTrue((out / "click_candidates.json").exists())
 
     def test_stage_clicks_does_not_skip_partial_groups(self):
         from src.segmentation.partsam.clicks import run_stage_clicks

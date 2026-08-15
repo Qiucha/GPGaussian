@@ -7,7 +7,12 @@ from typing import Any, Mapping, Union
 
 import numpy as np
 
-from src.segmentation.partsam.surface import load_sample_100k, sample_npz_path
+from src.segmentation.partsam.surface import (
+    SAMPLE_ID_KEY,
+    load_sample_100k,
+    sample_npz_path,
+    stored_sample_id,
+)
 
 CLICKS_NAME = "clicks.json"
 CANDIDATES_NAME = "click_candidates.json"
@@ -49,6 +54,27 @@ def clicks_are_complete(doc: Mapping[str, Any]) -> bool:
     except (TypeError, ValueError, KeyError):
         return False
     return True
+
+
+def stamp_clicks_sample_id(doc: dict[str, Any], sample_id: str) -> dict[str, Any]:
+    doc[SAMPLE_ID_KEY] = str(sample_id)
+    return doc
+
+
+def stored_clicks_sample_id(doc: Mapping[str, Any]) -> str | None:
+    value = doc.get(SAMPLE_ID_KEY)
+    if value is None:
+        return None
+    text = str(value)
+    return text or None
+
+
+def clicks_match_sample(doc: Mapping[str, Any], sample: Mapping[str, np.ndarray]) -> bool:
+    clicks_id = stored_clicks_sample_id(doc)
+    sample_id = stored_sample_id(sample)
+    if not clicks_id or not sample_id:
+        return False
+    return clicks_id == sample_id
 
 
 def load_clicks(path: PathLike) -> dict[str, Any]:
@@ -176,6 +202,16 @@ def _propose_and_write(output_dir: Path, sample: Mapping[str, np.ndarray]) -> No
         pass
 
 
+def _clicks_bound_to_sample(output_dir: Path, dest: Path) -> bool:
+    if not dest.is_file():
+        return False
+    sample_path = sample_npz_path(output_dir)
+    if not sample_path.is_file():
+        return False
+    doc = load_clicks(dest)
+    return clicks_are_complete(doc) and clicks_match_sample(doc, load_sample_100k(sample_path))
+
+
 def run_stage_clicks(
     model_path: PathLike,
     output_dir: PathLike,
@@ -185,14 +221,12 @@ def run_stage_clicks(
     del model_path
     out = Path(output_dir)
     dest = clicks_json_path(out)
-    if skip_if_exists and dest.exists():
-        doc = load_clicks(dest)
-        if clicks_are_complete(doc):
-            return dest
+    if skip_if_exists and _clicks_bound_to_sample(out, dest):
+        return dest
     sample = load_sample_100k(sample_npz_path(out))
     out.mkdir(parents=True, exist_ok=True)
     _propose_and_write(out, sample)
-    if dest.exists() and clicks_are_complete(load_clicks(dest)):
+    if _clicks_bound_to_sample(out, dest):
         return dest
     raise RuntimeError(
         f"wrote {CANDIDATES_NAME} and {PREVIEW_NAME}; MLLM or human must write {CLICKS_NAME} "

@@ -1,6 +1,7 @@
 """Stage 1: Screened Poisson from Gaussian means → 100k P_in with baked SH RGB."""
 from __future__ import annotations
 
+import hashlib
 from pathlib import Path
 from typing import Mapping, Union
 
@@ -12,6 +13,7 @@ from src.segmentation.heuristics import sh_dc_to_rgb
 
 SAMPLE_NAME = "sample_100k.npz"
 MESH_NAME = "poisson_mesh.ply"
+SAMPLE_ID_KEY = "sample_id"
 NUM_SURFACE_POINTS = 100_000
 SAMPLE_SEED = 666
 NN_CHUNK = 2048
@@ -24,6 +26,21 @@ def sample_npz_path(output_dir: PathLike) -> Path:
     return Path(output_dir) / SAMPLE_NAME
 
 
+def sample_id_from_coords(coords: np.ndarray) -> str:
+    blob = np.ascontiguousarray(coords, dtype=np.float32).tobytes()
+    return hashlib.sha256(blob).hexdigest()
+
+
+def stored_sample_id(sample: Mapping[str, np.ndarray]) -> str | None:
+    if SAMPLE_ID_KEY not in sample:
+        return None
+    raw = sample[SAMPLE_ID_KEY]
+    if raw is None:
+        return None
+    value = str(np.asarray(raw).item())
+    return value or None
+
+
 def write_sample_100k(
     path: PathLike,
     coords: np.ndarray,
@@ -33,23 +50,28 @@ def write_sample_100k(
 ) -> None:
     dest = Path(path)
     dest.parent.mkdir(parents=True, exist_ok=True)
+    coords_f = np.asarray(coords, dtype=np.float32)
     np.savez(
         dest,
-        coords=np.asarray(coords, dtype=np.float32),
+        coords=coords_f,
         normals=np.asarray(normals, dtype=np.float32),
         colors=np.asarray(colors, dtype=np.uint8),
         point_to_face=np.asarray(point_to_face, dtype=np.int32),
+        **{SAMPLE_ID_KEY: np.array(sample_id_from_coords(coords_f))},
     )
 
 
 def load_sample_100k(path: PathLike) -> Mapping[str, np.ndarray]:
     with np.load(path) as packed:
-        return {
+        out: dict[str, np.ndarray] = {
             "coords": packed["coords"],
             "normals": packed["normals"],
             "colors": packed["colors"],
             "point_to_face": packed["point_to_face"],
         }
+        if SAMPLE_ID_KEY in packed.files:
+            out[SAMPLE_ID_KEY] = packed[SAMPLE_ID_KEY]
+        return out
 
 
 def resolve_checkpoint_ply(model_path: PathLike) -> Path:

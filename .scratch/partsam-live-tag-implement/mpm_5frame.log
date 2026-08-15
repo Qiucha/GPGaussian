@@ -1,0 +1,29 @@
+[W 08/15/26 09:45:04.354 2217443] [cuda_driver.cpp:load_lib@36] libcuda.so lib not found.
+[W 08/15/26 09:45:04.355 2217443] [misc.py:adaptive_arch_select@758] Arch=[<Arch.cuda: 3>] is not supported, falling back to CPU
+/home/q/miniforge3/envs/physgauss/lib/python3.10/site-packages/taichi/lang/kernel_impl.py:763: UserWarning: The .grad attribute of a Tensor that is not a leaf Tensor is being accessed. Its .grad attribute won't be populated during autograd.backward(). If you indeed want the .grad field to be populated for a non-leaf Tensor, use .retain_grad() on the non-leaf Tensor. If you access the non-leaf Tensor by mistake, make sure you access the leaf Tensor instead. See github.com/pytorch/pytorch/pull/30531 for more informations. (Triggered internally at /pytorch/build/aten/src/ATen/core/TensorBody.h:489.)
+  if v.requires_grad and v.grad is None:
+[Taichi] version 1.7.4, llvm 15.0.4, commit b4b956fd, linux, python 3.10.20
+Warp 0.10.1 initialized:
+   CUDA Toolkit: 11.5, Driver: 13.3
+   Devices:
+     "cpu"    | CPU
+     "cuda:0" | NVIDIA GeForce RTX 3070 (sm_86)
+   Kernel cache: /home/q/.cache/warp/0.10.1
+[Taichi] Starting on arch=x64
+Loading scene config...
+Loading gaussians...
+Initializing scene and pre-processing...
+Initializing MPM solver and setting up boundary conditions...
+Module warp_utils load on device 'cuda:0' took 4.31 ms
+Particles initialized from torch data.
+Total particles:  171553
+Module mpm_utils load on device 'cuda:0' took 216.70 ms
+write .scratch/partsam-live-tag-implement/mpm_5frame/simulation_ply/sim_0000000000.ply
+  0%|          | 0/5 [00:00<?, ?it/s][ WARN:0@17.599] global loadsave.cpp:848 imwrite_ Unsupported depth image for selected encoder is fallbacked to CV_8U.
+ 20%|██        | 1/5 [00:12<00:48, 12.00s/it] 40%|████      | 2/5 [00:23<00:35, 11.88s/it] 60%|██████    | 3/5 [00:35<00:23, 11.76s/it] 80%|████████  | 4/5 [00:47<00:11, 11.79s/it]100%|██████████| 5/5 [00:59<00:00, 11.79s/it]100%|██████████| 5/5 [00:59<00:00, 11.81s/it]
+Module mpm_solver_warp.mpm_solver_warp load on device 'cuda:0' took 4.03 ms
+write .scratch/partsam-live-tag-implement/mpm_5frame/simulation_ply/sim_0000000001.ply
+write .scratch/partsam-live-tag-implement/mpm_5frame/simulation_ply/sim_0000000002.ply
+write .scratch/partsam-live-tag-implement/mpm_5frame/simulation_ply/sim_0000000003.ply
+write .scratch/partsam-live-tag-implement/mpm_5frame/simulation_ply/sim_0000000004.ply
+write .scratch/partsam-live-tag-implement/mpm_5frame/simulation_ply/sim_0000000005.ply

@@ -95,9 +95,9 @@ Heuristic Primitives do not rewrite after lift.
 
 Source: [Overlap and merge policy without another trial](issues/06-overlap-merge-policy.md), [Which merge rule now](../partsam-live-tag-fix/issues/04-which-merge-rule-now.md), [Code seam I/O contract for a later implementation map](issues/10-code-seam-io-contract.md).
 
-## Later implementation map — done when
+## Later implementation map — done
 
-All of:
+[Implement the live ficus PartSAM tagging fix](../partsam-live-tag-implement/map.md) met this bar:
 
 1. `material_tags.pt` length equals checkpoint Gaussian count *N* (before opacity filter).
 2. Every Stage 2 group with at least one positive click has its tag ID **non-empty on the lifted Material Tag Tensor** (count > 0).
@@ -105,11 +105,10 @@ All of:
 
 125-frame `configs/ficus.json` is not this bar. Per-part count floors (e.g. trunk > 1 000) are not this bar.
 
-Source: [Later execution success bar](../partsam-live-tag-fix/issues/07-later-execution-success-bar.md).
+Source: [Later execution success bar](../partsam-live-tag-fix/issues/07-later-execution-success-bar.md); [Prove the 5-frame solver bar](../partsam-live-tag-implement/issues/09-prove-the-5-frame-solver-bar.md).
 
 ## Out of this spec
 
-- Implementing skip identity and survival in `src/` (a later map).
 - A second scene trial.
 - Full-length ficus wind campaign.
 - Adding PartSAM to `CONTEXT.md`.
