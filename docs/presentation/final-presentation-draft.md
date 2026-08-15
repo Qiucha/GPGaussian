@@ -1,446 +1,274 @@
-# Phys4DGS — Final Presentation Slide Draft
+# Heterogeneous Material Assignment — Slide Draft
 
-Draft slide contents for a final project talk. Each section is one slide (or a short cluster). Speaker cues are in *italics*. Swap in live demo frames / Digest screenshots where noted.
+Focused final-talk outline: **prior work, methodology, and results** for the heterogeneous material / Material Tag Tensor path only.  
+Out of scope for this deck: Motion Critique Loop, full Digest product tour, few-shot motion library, and end-to-end “Phys4DGS product” pitch.
 
-**Suggested length:** ~12–15 minutes talk + demo + Q&A (~18–22 slides).
-
-**Suggested visual assets:** Digest Dashboard WebGL view; PartSAM tag preview (pot / trunk / leaves); ficus wind frames; architecture diagram (pipeline below).
-
----
-
-## Slide 1 — Title
-
-**Phys4DGS**  
-Heterogeneous MPM on Trained 3D Gaussian Splatting Scenes
-
-- Subtitle: *From material tags to physics-driven 4D motion*
-- Project / course line: BlendED · NVIDIA · 2026  
-- Repo: [Qiucha/GPGaussian](https://github.com/Qiucha/GPGaussian)  
-- Cite upstream: PhysGaussian (Xie et al., arXiv:2311.12198)
-
-*Speaker: One sentence — we animate existing 3DGS scenes with multi-material continuum physics, not by training a 4D Gaussian model.*
+**Suggested length:** ~8–10 minutes (~12–14 slides) + optional tag/MPM visuals.
 
 ---
 
-## Slide 2 — Agenda
+## Slide 1 — Title (narrow scope)
 
-1. Problem & motivation  
-2. What “4D” means here  
-3. End-to-end pipeline  
-4. Material Tag Tensor (PartSAM)  
-5. Physics: Lamé → PhysGaussian MPM  
-6. LLM-assisted config & critique  
-7. Digest Dashboard  
-8. Results, status, next steps  
-9. Demo & takeaways  
+**Heterogeneous Material Tagging for PhysGaussian**  
+Assigning per-Gaussian material labels for multi-material MPM
 
----
+- Problem focus: pot / trunk / leaves (and similar multi-part assets)  
+- Output: **Material Tag Tensor** `(N,)` → per-particle Lamé parameters  
+- Project context: Phys4DGS delta on PhysGaussian (Xie et al.)
 
-## Slide 3 — The Problem
-
-**Configuring PhysGaussian by hand does not scale.**
-
-- Trained 3DGS scenes are static — beautiful geometry, no dynamics  
-- PhysGaussian adds MPM, but setup is still manual:
-  - Continuum params: \(E\), \(\nu\), \(\rho\), timesteps, forces  
-  - Multi-material tagging of ~10⁵–10⁶ Gaussians (pot vs trunk vs leaves)  
-- Pain points from this project’s design brief:
-  - Slow (>25 min / scene of hand tuning is common)  
-  - Error-prone → CFL explosions, bad Poisson ratios  
-  - Thin structures (ficus trunk) defeat naive 2D masks  
-
-*Speaker: The bottleneck is not the renderer — it is material assignment + stable physics config.*
+*Speaker: This talk is only about who gets which material — not NL motion config or the dashboard product.*
 
 ---
 
-## Slide 4 — Goal
+## Slide 2 — Why Heterogeneous Materials Matter
 
-**Reduce human setup effort while enabling heterogeneous physical animation of real 3DGS assets.**
+Homogeneous MPM treats the whole 3DGS cloud as one continuum.
 
-User intent (natural language or curated config) → validated simulation:
-
-> “Blow a gust of wind so the leaves sway, the trunk flexes, and the pot stays anchored.”
-
-Deliverables of this **delta** repo (not a full PhysGaussian reimplementation):
-
-| Delta piece | Role |
+| Homogeneous | Heterogeneous (this work) |
 | --- | --- |
-| Material Tag Tensor producer | PartSAM (intended) |
-| Per-particle Lamé overlay | Tags → \(\mu, \lambda, \rho\) |
-| Runner + configs | Warp MPM on checkpoint |
-| Segmenter Agent / heuristics | Offline digest & tests |
-| Digest Dashboard | Inspect tags, params, frames |
-| Motion Critique Loop | Post-run config retune (spec + mock) |
+| One \(E, \nu, \rho\) for all particles | Discrete tags → different \(E, \nu, \rho\) per region |
+| Leaves as stiff as the pot | Pot anchored, trunk structural, foliage compliant |
+| Wind looks wrong or blows the whole object | Region-appropriate deformation |
+
+**Central artifact:** Material Tag Tensor — integer label per Gaussian, consumed by the PhysGaussian MPM Solver.
 
 ---
 
-## Slide 5 — What “4D” Means (and Does Not)
+## Slide 3 — Prior Work (1): PhysGaussian & 3DGS
 
-**4D here = time-varying 3DGS particles under physics.**
+**PhysGaussian** (Xie et al., arXiv:2311.12198)
 
-```
-Static 3DGS PLY  →  tags  →  MPM steps  →  re-rasterize frames
-```
+- Treats 3D Gaussians as MPM particles  
+- Steps continuum mechanics in Warp, re-rasterizes moved Gaussians  
+- Configures materials largely via **scene-level / manual JSON** (not automatic part tagging)
 
-- **Is:** PhysGaussian-style particle motion + Gaussian rasterization over time  
-- **Is not:** Yang-style 4D Gaussian training (no HexPlane / deformation-field optimizer in `src/`)  
+**3D Gaussian Splatting** (Kerbl et al.)
 
-*Speaker: Packaging text says “physics-based 4D Gaussian Splatting”; the code is a physics delta on frozen splats.*
+- Provides the frozen trained scene (means, SH, scales, opacity)  
+- SH DC coefficients are a free **appearance cue** for 3D color heuristics  
 
----
-
-## Slide 6 — Related Building Blocks
-
-| Component | What we use |
-| --- | --- |
-| **3D Gaussian Splatting** | Trained scene checkpoint (`point_cloud/`) |
-| **PhysGaussian** | Warp MPM solver + rasterize loop |
-| **PartSAM** | Part masks → Material Tag Tensor |
-| **This repo** | Tagging seam, Lamé map, LLM/schema, Digest, runners |
-
-Upstream clones stay gitignored (`third_party/`); we do not vendor PhysGaussian / PartSAM / 3DGS.
+*Gap we target:* PhysGaussian can simulate multi-material particles, but **producing the labels** for real trained scenes is still hard.
 
 ---
 
-## Slide 7 — Pipeline Overview (Architecture)
+## Slide 4 — Prior Work (2): 2D Foundation Models → 3D
 
-**Five stages, one closed loop for inspection.**
+| Approach | Idea | Limit on our scenes |
+| --- | --- | --- |
+| **LangSAM / open-vocab 2D SAM** | Text prompts → image masks | Thin structures (ficus trunk) often get ~10–100 Gaussians |
+| **FlashSplat-style lift** | Project / fuse 2D masks onto 3D Gaussians | Overlapping masks; large foliage blobs overwrite thin wood |
+| **Grounded SAM 2** (attempted) | Better tracking / detection | Env conflict: Grounding DINO CUDA vs SAM2’s PyTorch ≥ 2.3.1 — abandoned |
+
+**Lesson from prior art + our trials:** 2D→3D alone is insufficient for fine heterogeneous parts; need **3D-native cues** and/or **part-aware 3D segmentation**.
+
+---
+
+## Slide 5 — Prior Work (3): Part-Aware 3D Segmentation
+
+**PartSAM** (Czvvd/PartSAM + PartField features)
+
+- Class-agnostic **part** masks from sparse clicks on a surface sample  
+- Strong fit for “name the parts, then map parts → materials”  
+- Constraint: NVIDIA-noncommercial PartField; used as **gitignored upstream**, not vendored weights in git
+
+**Positioning vs heuristics**
+
+- Heuristics: fast, interpretable, scene-tuned rules on SH / geometry  
+- PartSAM: learned part grouping with an explicit click vocabulary (pot / trunk / leaves)
+
+*Speaker: Our lasting intended producer is PartSAM; heuristics remain evidence of the problem and an offline/test path.*
+
+---
+
+## Slide 6 — Problem Statement (Materials Only)
+
+**Given** a trained 3DGS checkpoint with \(N\) Gaussians,  
+**produce** tags \(t_i \in \{1,2,3,\ldots\}\) such that:
+
+1. Each semantic part is **non-empty** and geometrically coherent  
+2. Overlaps have an **explicit merge policy** (thin structure must survive)  
+3. Tags map cleanly to continuum props \(\{E,\nu,\rho\}_t\) and Lamé \((\mu,\lambda)\)  
+4. A short heterogeneous MPM run **loads the tensor and remains stable**
+
+Ficus running example: **1 = pot**, **2 = trunk**, **3 = leaves**.
+
+---
+
+## Slide 7 — Method Overview (Evolution)
+
+Three generations of tagging tried in this project:
 
 ```text
-┌─────────────────┐
-│ 1. Load 3DGS    │  PLY / GaussianModel
-└────────┬────────┘
-         ▼
-┌─────────────────┐
-│ 2. Material Tag │  PartSAM → material_tags.pt  (N,)
-│    Tensor       │  [heuristics / Segmenter Agent: digest/tests]
-└────────┬────────┘
-         ▼
-┌─────────────────┐
-│ 3. Lamé map     │  tag → E, ν, density → μ, λ
-└────────┬────────┘
-         ▼
-┌─────────────────┐
-│ 4. MPM solve    │  PhysGaussian Warp (p2g2p)
-└────────┬────────┘
-         ▼
-┌─────────────────┐
-│ 5. Rasterize    │  Moved Gaussians → frames / video
-└────────┬────────┘
-         ▼
-┌─────────────────┐
-│ Digest Dashboard│  Tags · materials · Dual-Mode Frame Player
-└─────────────────┘
+Gen A  LangSAM / FlashSplat 2D masks + semantic Z-priority
+          └─ failed on thin trunk (~10–100 Gaussians)
+
+Gen B  Hybrid Heuristic Primitives (SH + spatial + DBSCAN)
+          └─ recovered trunk (~36k Gaussians on ficus)
+          └─ Segmenter Agent chains primitives from metadata
+
+Gen C  PartSAM recipe (intended producer)
+          surface → clicks → masks → IoU merge → NN lift → survival
+          └─ ficus trial: all three parts occupied; short MPM OK
 ```
 
-Optional side loop: **Motion Critique** retunes JSON config (not membership of tags).
-
 ---
 
-## Slide 8 — Domain Vocabulary (Keep Consistent)
+## Slide 8 — Methodology A: Hybrid Heuristic Pipeline
 
-| Term | Meaning |
+**Heuristic Primitives** (`src/segmentation/heuristics.py`) — deterministic rules on Gaussians:
+
+| Family | Examples |
 | --- | --- |
-| **Material Tag Tensor** | `(N,)` int labels on every Gaussian |
-| **Heuristic Primitive** | Deterministic geometric/color rule (SH, AABB, DBSCAN, …) |
-| **Segmenter Agent** | LLM (or mock) that chains primitives from scene metadata |
-| **PhysGaussian MPM Solver** | Continuum particle engine (Warp) |
-| **Digest Dashboard** | Browser inspector for the pipeline |
-| **Dual-Mode Frame Player** | Frame scrubbing (+ intended HTML5 video) |
+| Chromatic / SH | \(C_{\mathrm{RGB}} = f_{\mathrm{dc}}\cdot Y_0^0 + 0.5\); wood \(R>G \land R>B\); foliage \(G>R \land G>B\) |
+| Spatial | AABB / axis percentiles / cylinder–cone |
+| Structural | Anisotropy (scale ratios), local density |
+| Topological | DBSCAN outlier purge; KNN tag smoothing |
 
-*Speaker: Use these names in the talk — they match CONTEXT.md and the code.*
+**Segmenter Agent** (supporting): reads scene metadata → ordered JSON plan of primitives → Material Tag Tensor.
 
----
-
-## Slide 9 — Material Tag Tensor
-
-**The central seam between perception and physics.**
-
-- Shape: `(N,)` with \(N\) = Gaussian count (pre–opacity filter)  
-- Ficus vocabulary (PartSAM path): **1 = pot**, **2 = trunk**, **3 = leaves**  
-- Consumed by the runner via `--tags_path material_tags.pt`  
-- Each ID maps to continuum properties in config `materials`
-
-Example (ficus wind config sketch):
-
-| Tag | Role | Typical \(E\) order |
-| --- | --- | --- |
-| 1 | Anchor / pot | ~10⁷ (stiff) |
-| 2 | Trunk | ~10⁷ (structural) |
-| 3 | Leaves | ~10¹–10² (compliant) |
-
-*Visual: colored point cloud — pot / trunk / leaves.*
+**FlashSplat / LangSAM base (historical):** 2D unprojection with hardcoded priority  
+`stem/trunk > leaves > pot` so large leaf masks do not erase wood.
 
 ---
 
-## Slide 10 — PartSAM as Intended Tagger
+## Slide 9 — Methodology B: PartSAM Three-Stage Recipe
 
-**Three-stage recipe (wired under `src/segmentation/partsam`).**
+**Intended producer** (`src/segmentation/partsam`):
 
-1. **Surface sample** — Screened Poisson from Gaussian means → 100k points + normals + baked SH RGB  
-2. **Clicks** — Geometry proposes candidates; MLLM/human accept · swap · resample → `clicks.json` (pot / trunk / leaves)  
-3. **Masks → merge → lift** — PartSAM `predict_masks`; highest IoU wins overlaps; nearest labeled sample → every Gaussian; **survival** so prompted IDs stay non-empty after lift  
+1. **Surface** — Screened Poisson on Gaussian means → area-sample 100k + normals; bake SH RGB from nearest mean  
+2. **Clicks** — Geometry proposes candidates per bin (low-\(z\) dark → pot; mid thin → trunk; high green → leaves); MLLM/human accept·swap·resample → `clicks.json`  
+3. **Masks → merge → lift**
+   - `predict_masks` per group  
+   - Overlap: **highest chosen IoU wins** (smaller mask on ties)  
+   - NN from labeled 100k samples onto **every** Gaussian  
+   - **Survival:** if a prompted ID is emptied after lift, restore that group’s raw mask and re-lift  
 
-Trial evidence (ficus): ingestible tags + short 5-frame MPM run without explosion  
-*(caveat: trunk mask can be oversized vs a thin stem — merge/survival policy is the fix path, not a one-off retune).*
-
----
-
-## Slide 11 — Heuristics & Segmenter Agent (Supporting Path)
-
-**Still in the tree for digest, tests, and offline CPU demos — not the lasting production tagger.**
-
-Heuristic Primitives (examples):
-
-- Chromatic / SH DC → RGB dominance (wood vs foliage)  
-- Spatial AABB cutoff  
-- PCA / anisotropy  
-- DBSCAN noise purge  
-
-**Segmenter Agent:**
-
-- Reads scene metadata (bbox, density, SH histograms)  
-- Emits a structured JSON plan of primitives  
-- `mock_llm=True` path is fully offline / unit-tested  
-
-*Speaker: Early work proved thin trunks need 3D SH cues; PartSAM later became the intended producer.*
+Output: `material_tags.pt` `(N,)` int32 with IDs **1 / 2 / 3**.
 
 ---
 
-## Slide 12 — From Tags to Continuum Parameters
+## Slide 10 — Methodology C: Tags → Heterogeneous Continuum
 
-**Per-particle Lamé from discrete labels.**
+Map discrete tags to PhysGaussian materials, then per-particle Lamé:
 
 \[
 \mu = \frac{E}{2(1+\nu)}, \qquad
 \lambda = \frac{E\nu}{(1+\nu)(1-2\nu)}
 \]
 
-- Implemented in `src/simulation/lame_params.py`  
-- Solver also needs density, grid resolution, substep \(\Delta t\), BCs  
-- **CFL guardrail** rejects unsafe configs before Warp:
+Example ficus table (`configs/ficus.json`):
 
-\[
-c_p = \sqrt{\frac{E(1-\nu)}{\rho(1+\nu)(1-2\nu)}}, \quad
-\Delta t_{\mathrm{sub}} \le 0.5\,\frac{\Delta x}{c_p}, \quad \nu \le 0.49
-\]
+| Tag | Role | \(E\) | \(\nu\) | \(\rho\) |
+| --- | --- | --- | --- | --- |
+| 1 | Pot / anchor | \(10^7\) | 0.3 | 200 |
+| 2 | Trunk | \(2\times10^7\) | 0.4 | 200 |
+| 3 | Leaves | \(50\) | 0.45 | 5 |
 
-*Speaker: Automation without CFL checks just fails faster.*
-
----
-
-## Slide 13 — PhysGaussian MPM Solver
-
-**Heterogeneous particles, one Warp simulation.**
-
-- Input: Gaussian xyz (+ velocities), per-particle \(\mu,\lambda,\rho\)  
-- Engine: PhysGaussian `MPM_Simulator_WARP` / p2g2p  
-- Boundary conditions (config-driven): cuboid anchors, particle impulses (wind), rotations, colliders, …  
-- Output: updated particle positions → 3DGS rasterization → frame sequence  
-
-Runner entry:
-
-```bash
-./scripts/run_pipeline.sh
-# or
-python -m src.simulation.runner \
-  --model_path data/models/ficus_whitebg \
-  --tags_path data/outputs/tags/material_tags.pt \
-  --config configs/ficus.json
-```
+Plus BCs (cuboid pot freeze, wind impulses). Opacity filter may drop particles for MPM (e.g. 203 930 → 171 553) without changing tag vocabulary.
 
 ---
 
-## Slide 14 — LLM Motion Library & Translator
+## Slide 11 — Results (1): Heuristic / 2D Path Findings
 
-**Natural language → validated PhysGaussian JSON.**
+Empirical findings on **ficus_whitebg** (design log + SH trunk work):
 
-- **Motion Library:** few-shot exemplars — wind drag, impact/drop, twisting torque, elastoplastic tearing  
-- Retrieval + MMR reranking → CoT prompt context  
-- **MotionTranslator:** emits full config + reasoning  
-- Schema extends PhysGaussian with `materials`, BCs, segmentation rules  
-- Status: **mock path works & is tested**; live API still `NotImplementedError`
-
-*User story slide alternate:* animator types intent; engineer inspects CoT; validator blocks explosions.
-
----
-
-## Slide 15 — Motion Critique Loop
-
-**After a run, retune physics — not tags — from human language.**
-
-- Frozen Material Tag Tensor (`--tags_path` unchanged)  
-- Input: previous config + required freeform text (+ optional render PNGs)  
-- Output: **complete** next `--config` (materials / BCs / timesteps)  
-- Modes: human-gated (default) or auto-rerun with stop conditions  
-- Mock `critique` = identity (for wiring tests); live critique still stubbed  
-
-Example critique:
-
-> “the trunk should rebound more”
-
----
-
-## Slide 16 — Digest Dashboard
-
-**Interactive inspection of the full pipeline.**
-
-- Static web app: `digest/` (Three.js WebGL point cloud)  
-- Pipeline stage tabs: Raw 3DGS → spatial → chromatic/SH → DBSCAN → MPM tags  
-- Material breakdown, physics parameter matrix (\(E,\nu,\rho,\mu,\lambda\))  
-- Dual-Mode Frame Player: scrub simulation frames  
-- Multi-scene selector via `manifest.json`  
-
-*Demo cue: open Digest; toggle stages; scrub frames.*
-
----
-
-## Slide 17 — Evaluation Protocol
-
-**Realism + effort (designed; partially implemented).**
-
-| Axis | Metrics | Status in repo |
+| Method | Trunk capture (approx.) | Outcome |
 | --- | --- | --- |
-| Trajectory | SVD–Kabsch MSE | Implemented |
-| Perception | 2AFC binomial | Implemented |
-| Video / image quality | FVD, KVD, PSNR, SSIM, LPIPS | Named; not fully implemented |
-| Setup effort | \(T_{\mathrm{setup}}\), LOC, \(N_{\mathrm{iter}}\) | Timer path; NASA-TLX subscales pending |
+| LangSAM 2D masks alone | ~10–100 Gaussians | Unusable for structural MPM |
+| Cylinder geometry heuristic | — | Failed (branches too wide) |
+| Grounded SAM 2 upgrade | — | Blocked by CUDA/PyTorch conflict |
+| **3D SH RGB dominance** | **~36 058 trunk Gaussians** | Usable trunk material region without 2D noise |
 
-*Speaker: Be honest — gold-standard video metrics are specified; Kabsch/2AFC/effort scaffolding is what ships today.*
+Additional: semantic Z-priority (`stem > leaves > pot`) required when fusing overlapping 2D masks via FlashSplat-style lift.
 
----
-
-## Slide 18 — Results & Scenes
-
-**Primary narrative scene: ficus (wind / sway).**
-
-- Multi-material tags: pot · trunk · leaves  
-- Configs: `configs/ficus.json` (impulses + gravity + pot cuboid anchor)  
-- Experiment notes: stiffening trunk / finer \(\Delta t\) improves behavior; full rebound still hard  
-- PartSAM trial: non-trivial occupancy on all three parts; short MPM run stable  
-
-**Other configs / digest models:** vasedeck (multi-material), wolf, plane, pillow2sofa, tear_bread, …
-
-*Visuals: before/after wind frames; tag coloring; Digest panel.*
+*Takeaway:* Appearance-aware **3D** filtering was the first method that made heterogeneous trunk vs leaf assignment practical.
 
 ---
 
-## Slide 19 — What Works vs What’s Next
+## Slide 12 — Results (2): PartSAM Ficus Trial
 
-**Works (demonstrable)**
+**Pass** on ingest bar (`.scratch/partsam-ficus-trial/RESULT.md`):
 
-- Heuristic primitives + Segmenter Agent (`mock_llm`)  
-- Schema / CFL validation  
-- PartSAM tagging path in `src/` + `run_pipeline.sh`  
-- Lamé overlay + PhysGaussian runner wiring  
-- Digest Dashboard UI  
-- Mock motion translate / critique driver  
-
-**Incomplete / future**
-
-- Live LLM `translate` / `critique`  
-- Full-length high-quality wind campaign + archived demo video in-tree  
-- Video quality metrics (FVD/KVD/…)  
-- Digest frames always = real Warp renders  
-- Broader scenes beyond ficus evidence for PartSAM  
-
----
-
-## Slide 20 — Design Lessons Learned
-
-1. **2D masks alone fail on thin structure** → 3D SH cues, then PartSAM lift  
-2. **Overlap needs an explicit merge policy** (IoU / survival), not “largest mask wins”  
-3. **Tags and continuum params are different seams** — critique retunes JSON, not membership  
-4. **CFL validation is a product feature**, not a nice-to-have  
-5. **Upstream stays upstream** — delta repo + gitignored clones keeps licenses and scope clear  
-
----
-
-## Slide 21 — Live Demo Plan
-
-| Beat | Show |
+| Criterion | Result |
 | --- | --- |
-| 1 | Digest: ficus tags & stage toggles |
-| 2 | Material matrix (\(E,\nu,\rho\)) |
-| 3 | Frame scrub / wind motion (if assets present) |
-| 4 | (Optional) short `material_tags` occupancy or runner CLI |
+| Tag length = Gaussian count | `(203 930,)` int32 |
+| Occupancy | pot **30 339** · trunk **79 053** · leaves **94 538** |
+| Runner ingest | Loaded via `--tags_path`; per-tag counts logged |
+| Short MPM | `frame_num=5`, exit 0; positions finite; coherent ficus frames |
 
-Fallback if GPU/checkpoints unavailable: offline Segmenter Agent mock path + Digest with exported JSON.
-
----
-
-## Slide 22 — Takeaways
-
-1. **Phys4DGS** = heterogeneous MPM on **trained** 3DGS — time from physics, not from a 4D trainer  
-2. The hard problem is **Material Tag Tensor quality** + **stable multi-material config**  
-3. **PartSAM → Lamé → Warp → rasterize → Digest** is the intended end-to-end story  
-4. **LLM motion + critique** is the effort-reduction layer (mock today; live next)  
-5. Contribution is a **practical delta** on PhysGaussian: tagging, parameters, tooling, inspection  
+**Caveat (not a fail):** trunk∩leaves overlap on the 100k sample was large (~23 038); priority/IoU merge favored trunk → trunk tag **larger than a thin stem**. Motivated later **IoU + survival** policy in the production seam (not a one-off threshold hack).
 
 ---
 
-## Slide 23 — Acknowledgments & References
+## Slide 13 — Results (3): Offline / Synthetic Checks
 
-- PhysGaussian — Xie et al., arXiv:2311.12198  
-- 3D Gaussian Splatting — Kerbl et al.  
-- PartSAM / PartField (upstream; non-commercial research constraints apply)  
-- BlendED / NVIDIA project context  
-- Team / mentors / *(fill names)*  
+Supporting evidence (unit / mock path — not claimed as real-scene SOTA):
 
-**Q&A**
+- **Multi-model synthetic benchmark:** Segmenter Agent (`mock_llm`) correctly tags constructed plant / chair / anisotropic-toy clouds with expected pot–stem–foliage (or analogue) partitions  
+- **Segmentation quality metrics:** silhouette, per-tag spatial/color std, connected components, **speckle %** — used to score and refine heuristic plans  
+- **Always-on PartSAM seam tests:** merge / IoU / lift / FPS / clicks / surface contracts without publishing weights  
 
----
-
-## Appendix A — One-Slide Pipeline Diagram (backup)
-
-Use if the architecture slide feels crowded; print as a full-bleed diagram.
-
-```text
-3DGS PLY ──► PartSAM (surface → clicks → masks → lift)
-                 │
-                 ▼
-          material_tags.pt (N,)
-                 │
-                 ▼
-     materials{E,ν,ρ} ──► Lamé (μ,λ) ──► Warp MPM ──► Rasterize
-                 ▲                                      │
-                 └──── Motion Critique (optional) ◄─────┘
-                                  │
-                                  ▼
-                           Digest Dashboard
-```
+*Speaker: Distinguish live ficus PartSAM numbers (Slide 12) from synthetic heuristic tests.*
 
 ---
 
-## Appendix B — Suggested Timing
+## Slide 14 — Results Summary Table
 
-| Block | Minutes |
+| Question | Answer from this work |
 | --- | --- |
-| Problem → goal → “what 4D means” | 2 |
-| Pipeline + tags + PartSAM | 4 |
-| MPM + CFL + LLM/critique | 3 |
-| Digest + results + status | 3 |
-| Demo | 2–3 |
-| Takeaways + Q&A | remainder |
+| Can 2D foundation masks alone tag a thin trunk? | **No** (~10² Gaussians) |
+| Can 3D SH heuristics recover trunk mass? | **Yes** (~3.6×10⁴ on ficus) |
+| Can PartSAM produce a full `(N,)` multi-part tensor? | **Yes** (all three parts >1 000) |
+| Does that tensor drive stable short heterogeneous MPM? | **Yes** (5-frame Warp check) |
+| Is trunk geometry “thin” after PartSAM merge? | **Not yet** — overlap bias; survival/IoU is the control knob |
+| Intended lasting producer? | **PartSAM recipe in `src/`**; heuristics for digest/tests |
 
 ---
 
-## Appendix C — Honest Scope Notes for Speakers
+## Slide 15 — Limitations (Materials Scope)
 
-Do **not** claim:
-
-- A trained Yang-style 4DGS model in this repo  
-- Live production LLM critique without the mock flag  
-- That Digest “MPM” export frames are always Warp (exporter historically used PIL placeholders)  
-- Commercial redistribution of PartField weights / `partfield/`  
-
-Do claim:
-
-- A working delta architecture around PhysGaussian  
-- Offline-tested Segmenter Agent / schema / metrics core  
-- Intended PartSAM tagging seam with survival/merge policy  
-- An inspectable Digest Dashboard and multi-material configs  
+- Evidence concentrated on **ficus**; other scenes mainly configs / heuristic digest exports  
+- PartSAM trunk can be **over-thick** vs anatomic stem  
+- Inference uses in-repo **FPS stand-in** (not claiming official PartSAM compile stack)  
+- Heuristic path is **scene-sensitive** (color thresholds, bins)  
+- Full-length wind fidelity and perceptual video metrics are **outside this materials deck**
 
 ---
 
-*Draft generated from repo purpose (`docs/agents/orientation.md`, `CONTEXT.md`, `README.md`) and current implementation state. Update Slide 18–19 with the latest demo assets before presenting.*
+## Slide 16 — Takeaways (Materials Only)
+
+1. Heterogeneous MPM needs a **Material Tag Tensor**, not one global \((E,\nu,\rho)\).  
+2. **Prior 2D→3D lifts** struggle on thin structure; **3D SH heuristics** were the first practical fix.  
+3. **PartSAM** is the lasting methodology: surface sample → clicks → part masks → IoU merge → NN lift → survival.  
+4. Results: non-trivial pot/trunk/leaves occupancy on ficus + short stable multi-material MPM ingest.  
+5. Remaining materials research: thinner trunk occupancy, more scenes, less click/MLLM friction.
+
+---
+
+## Appendix — Visual Checklist
+
+| Slide | Suggested figure |
+| --- | --- |
+| 2 | Homogeneous vs multi-color tagged cloud |
+| 7 | Gen A → B → C timeline |
+| 8 | SH RGB trunk vs leaf filter diagram |
+| 9 | Three-stage PartSAM flowchart |
+| 11 | Side-by-side: 2D trunk failure vs 36k SH trunk |
+| 12 | `ficus_gaussians_tags.png` + 5 MPM frames |
+| 10 | Material table overlaid on tagged cloud |
+
+---
+
+## Appendix — Explicitly Excluded from This Deck
+
+Do not expand these here (other talks / slides):
+
+- Few-shot Motion Translator / motion library  
+- Motion Critique Loop  
+- Digest Dashboard UI features (except as a tag viewer if needed)  
+- CFL/LLM config synthesis beyond the materials table  
+- Yang-style 4DGS training  
+
+---
+
+*Draft scoped to heterogeneous material tagging from `CONTEXT.md`, design decisions, PartSAM trial RESULT, and `src/segmentation/` methodology.*
