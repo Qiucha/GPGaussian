@@ -244,6 +244,28 @@ Gaps where design is **policy or architecture** ahead of **measured necessity**:
 
 Until A4/B3/C3 exist, **heterogeneous tagging + CFL** are the best-justified stages; **PartSAM monopoly** and **LLM critique** remain **hypotheses with partial trials**.
 
+**D. Strongest necessity experiment (GPU; not Cloud-CPU)**
+
+| ID | Experiment | Pass signal |
+| --- | --- | --- |
+| D1 | Same ficus tags ignored (homogeneous soft / homogeneous stiff) vs `configs/ficus.json` hetero `materials` under identical wind BCs; short `frame_num` | Soft-homo moves pot; stiff-homo kills leaf sway; hetero keeps pot anchored with foliage motion — load-bearing proof for the Material Tag Tensor seam |
+
+---
+
+## 5b. Issue-history arc (how the pipeline was forced into this shape)
+
+Compressed from maps/tickets (sediment + live specs):
+
+1. **RFC** (`.scratch/llm-motion-physgaussian/`): NL config + hybrid segmentation + gold metrics; problem framed as >25 min/scene manual JSON and CFL explosions.
+2. **Heuristic + Segmenter Agent** (historical map-001, tickets 001–005, 017): generalize tagging beyond ficus SH scripts; iterative plan refinement on segmentation metrics.
+3. **2D lift pain** (`design_decisions.md`): retire Grounded SAM 2 (CUDA/PyTorch conflict); FlashSplat Z-priority hacks; SH trunk rescue after LangSAM found ~10–100 trunk Gaussians.
+4. **PartSAM trial → go/no-go YES → `src/` wiring → `run_pipeline.sh`** (`partsam-ficus-trial`, `partsam-as-tagger`, `partsam-src-wiring`): intended producer replaces FlashSplat on the main runner.
+5. **Live-tag-fix** map: treat solver explosions (e.g. CUDA 700) as **tag occupancy** bugs (zero trunk), not Warp kernel bugs.
+6. **Motion Critique Loop** graduates from RFC “real-time feedback” fog into frozen-tags config retune; mock wired in `src/llm/critique_loop.py`.
+7. **GitHub-ready**: consume PhysGaussian as upstream clone; keep delta thin (`README.md`, `.scratch/github-ready-working-tree/`).
+
+That history argues **accretive necessity** (each stage plugs a demonstrated failure), not a single greenfield architecture diagram.
+
 ---
 
 ## 6. Novelty vs related approaches
@@ -347,3 +369,11 @@ Grounded in **repo claims** and **architecture**, not external paper reinterpret
 - `Paper_Writing/`
 - `docs/adr/`
 - Root `Dev Plan.md` (disposition claimed in agent-orientation map; file not present under historical listing beyond design_decisions/digest/issues)
+
+---
+
+## 8. Direct answers
+
+**1. Full pipeline?** See §2 mermaid graph. Philosophy: keep PhysGaussian’s solver/rasterizer; add multi-material membership (Material Tag Tensor), safer config authorship (CFL + LLM/critique), and inspectability (Digest). Necessity is strongest for hetero tags + Lamé + CFL; PartSAM-as-monopoly and live critique need experiments in §5/§5b/D1.
+
+**2. Novelty?** Composition and seams — not a new MPM kernel or learned 4DGS trainer. Defensible: discrete tag seam, PartSAM→physics IDs recipe, frozen-tags critique, CFL-gated NL config as a PhysGaussian **delta**. Not yet defensible: live-LLM superiority, gold video metrics, or “4DGS training” branding.
