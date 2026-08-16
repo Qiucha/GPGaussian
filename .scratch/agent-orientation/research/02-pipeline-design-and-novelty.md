@@ -13,7 +13,7 @@ Phys4DGS is a **delta** on PhysGaussian: it takes a **trained 3DGS checkpoint**,
 
 ## 2. Full pipeline graph (intended and as-built)
 
-Legend: **solid** = intended / wired production path; **dashed** = as-built alternate, digest/test, or stub; labels mark stubs.
+Legend: **solid** = intended / wired production path; **dashed** = as-built alternate, test path, or stub; labels mark stubs.
 
 ```mermaid
 flowchart TB
@@ -53,10 +53,9 @@ flowchart TB
     FILL["Optional particle fill + NN tag copy"]
   end
 
-  subgraph out["Outputs / inspect"]
+  subgraph out["Outputs"]
     RAST["3DGS rasterize frames<br/>src/rendering/rasterize.py<br/>needs vendor CUDA"]
     VID["optional ffmpeg output.mp4"]
-    DIG["Digest Dashboard<br/>digest/ — Segmenter path + PIL fake MPM<br/>NOT Warp frames"]
     EVAL["Kabsch MSE + 2AFC<br/>FVD/KVD/PSNR/SSIM/LPIPS NAMED ONLY"]
   end
 
@@ -74,9 +73,6 @@ flowchart TB
   WARP --> RAST --> VID
   WARP -.-> CRIT
   CRIT -.->|revised config human-gated/auto| CFG
-  SA --> DIG
-  HEUR --> DIG
-  RAST -.-> DIG
   WARP -.-> EVAL
 ```
 
